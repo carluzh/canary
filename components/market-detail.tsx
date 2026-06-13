@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/top-bar";
 import { TradePanel } from "@/components/trade-panel";
+import { SiteFooter } from "@/components/site-footer";
 import { ConnectWallet } from "@/components/connect-wallet";
 import { ModeToggle } from "@/components/mode-toggle";
 import { getMarket } from "@/lib/markets";
@@ -15,7 +16,11 @@ export function MarketDetail({ id }: { id: string }) {
   if (!m) return null;
 
   return (
-    <main className="canary-shell" data-theme={mode === "expert" ? "expert" : "simple"}>
+    <main
+      className="canary-shell"
+      data-theme={mode === "expert" ? "expert" : "simple"}
+      style={{ paddingBottom: 0 }}
+    >
       <header
         style={{
           display: "flex",
@@ -119,6 +124,9 @@ export function MarketDetail({ id }: { id: string }) {
           ← All markets
         </Link>
       </div>
+
+      <SiteFooter />
+      <div aria-hidden style={{ height: 30 }} />
     </main>
   );
 }

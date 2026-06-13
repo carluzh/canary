@@ -35,10 +35,6 @@ export function isMuted(): boolean {
   return muted;
 }
 
-export function setMuted(b: boolean): void {
-  muted = b;
-}
-
 export function toggleMuted(): boolean {
   muted = !muted;
   return muted;

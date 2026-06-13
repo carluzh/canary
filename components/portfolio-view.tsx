@@ -2,6 +2,7 @@
 
 import { useAccount, useBalance } from "wagmi";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { arcTestnet } from "@/lib/web3/chains";
 import { useMode } from "@/lib/web3/mode";
 
@@ -15,7 +16,11 @@ export function PortfolioView() {
   });
 
   return (
-    <main className="canary-shell" data-theme={mode === "expert" ? "expert" : "simple"}>
+    <main
+      className="canary-shell"
+      data-theme={mode === "expert" ? "expert" : "simple"}
+      style={{ paddingBottom: 0 }}
+    >
       <SiteHeader />
 
       <h1
@@ -55,6 +60,9 @@ export function PortfolioView() {
           </div>
         </>
       )}
+
+      <SiteFooter />
+      <div aria-hidden style={{ height: 30 }} />
     </main>
   );
 }
