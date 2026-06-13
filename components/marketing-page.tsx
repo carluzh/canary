@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import { Wordmark } from "@/components/top-bar";
 import { Draggable } from "@/components/draggable";
+import { TokenCloud } from "@/components/token-cloud";
 import { SiteFooter } from "@/components/site-footer";
 import { STABLES } from "@/lib/stables";
 import { usd } from "@/lib/format";
@@ -104,14 +105,8 @@ export function MarketingPage() {
     router.push("/markets");
   };
 
-  const usdt = STABLES.find((s) => s.symbol === "USDT")!;
-  const usde = STABLES.find((s) => s.symbol === "USDe")!;
-
-  const availablePct = (capacityTotal: number, capacityUsed: number) =>
-    Math.round(((capacityTotal - capacityUsed) / capacityTotal) * 100);
-
   return (
-    <main className="canary-shell" style={{ paddingTop: 24 }}>
+    <main className="canary-shell" style={{ paddingTop: 24, paddingBottom: 0 }}>
       <header
         style={{
           display: "flex",
@@ -140,54 +135,22 @@ export function MarketingPage() {
       {/* Hero */}
       <section className="canary-hero">
         <div className="canary-rings" aria-hidden>
-          <div className="canary-ring" style={{ width: 380, height: 380 }} />
-          <div className="canary-ring" style={{ width: 600, height: 600 }} />
+          <div className="canary-ring" style={{ width: 620, height: 620 }} />
+          <div className="canary-ring" style={{ width: 920, height: 920 }} />
         </div>
+
+        <TokenCloud />
 
         <div className="canary-floats">
           {/* decorative 3-stars, draggable but static */}
           <Draggable className="canary-drag" style={{ top: "6%", left: "50%", marginLeft: -36 }}>
-            <img src="/3-stars.png" alt="" width={72} style={{ opacity: 0.92, display: "block" }} />
-          </Draggable>
-
-          {/* top-left */}
-          <Draggable className="canary-drag" style={{ top: "13%", left: "2%" }}>
-            <Sticker
-              logo="/tokens/usdt.png"
-              color="#26A17B"
-              availableUsd={usdt.capacityTotal - usdt.capacityUsed}
-              fill={availablePct(usdt.capacityTotal, usdt.capacityUsed)}
+            <img
+              src="/3-stars.png"
+              alt=""
+              width={72}
+              data-cloud-bound="top"
+              style={{ opacity: 0.92, display: "block" }}
             />
-          </Draggable>
-
-          {/* top-right */}
-          <Draggable className="canary-drag" style={{ top: "11%", right: "3%" }}>
-            <Sticker
-              logo="/tokens/usde.png"
-              color="#2D2D2D"
-              availableUsd={usde.capacityTotal - usde.capacityUsed}
-              fill={availablePct(usde.capacityTotal, usde.capacityUsed)}
-            />
-          </Draggable>
-
-          {/* mid-left */}
-          <Draggable className="canary-drag" style={{ top: "48%", left: "0%" }}>
-            <Sticker logo="/tokens/arc.png" color="#1B3158" label="Settled on Arc" />
-          </Draggable>
-
-          {/* mid-right */}
-          <Draggable className="canary-drag" style={{ top: "46%", right: "1%" }}>
-            <Sticker logo="/tokens/dai.png" color="#F5AC37" label="DAI" apy="7.2% APY" />
-          </Draggable>
-
-          {/* bottom */}
-          <Draggable className="canary-drag" style={{ bottom: "13%", left: "8%" }}>
-            <Sticker logo="/tokens/chainlink.png" color="#375BD2" label="Chainlink resolved" />
-          </Draggable>
-
-          {/* bottom-right */}
-          <Draggable className="canary-drag" style={{ bottom: "12%", right: "5%" }}>
-            <AvailableInsuranceSticker />
           </Draggable>
         </div>
 
@@ -231,6 +194,7 @@ export function MarketingPage() {
             <Link
               href="/markets"
               className="canary-btn canary-btn--accent"
+              data-cloud-bound="bottom"
               style={{ padding: "13px 22px", fontSize: 15 }}
             >
               Launch app
@@ -240,8 +204,14 @@ export function MarketingPage() {
         </div>
       </section>
 
+      {/* How it works + Simple/Expert, wrapped so the stickers span both */}
+      <div className="canary-mid-zone">
       {/* How it works */}
-      <section id="how" style={{ marginTop: 48, scrollMarginTop: 24 }}>
+      <section
+        id="how"
+        className="canary-how-zone"
+        style={{ marginTop: 48, scrollMarginTop: 24 }}
+      >
         <h2
           style={{
             fontFamily: "var(--font-radley)",
@@ -276,7 +246,7 @@ export function MarketingPage() {
 
       {/* Two modes */}
       <div className="canary-divider" />
-      <section style={{ marginTop: 48 }}>
+      <section style={{ marginTop: 0 }}>
         <div
           className="canary-grid"
           style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
@@ -344,6 +314,30 @@ export function MarketingPage() {
           </div>
         </div>
       </section>
+
+        {/* stickers span the whole How it works + Simple/Expert region */}
+        <div className="canary-edge-stickers">
+          <Draggable className="canary-drag" style={{ top: "4%", left: "1.5%" }}>
+            <div style={{ transform: "rotate(-8deg)" }}>
+              <Sticker logo="/tokens/arc.png" color="#1B3158" label="Settled on Arc" />
+            </div>
+          </Draggable>
+          <Draggable className="canary-drag" style={{ top: "84%", left: "3%" }}>
+            <div style={{ transform: "rotate(6deg)" }}>
+              <AvailableInsuranceSticker />
+            </div>
+          </Draggable>
+          <Draggable className="canary-drag" style={{ top: "44%", right: "1.5%" }}>
+            <div style={{ transform: "rotate(-5deg)" }}>
+              <Sticker
+                logo="/tokens/chainlink.png"
+                color="#375BD2"
+                label="Chainlink resolved"
+              />
+            </div>
+          </Draggable>
+        </div>
+      </div>
 
       <SiteFooter />
     </main>

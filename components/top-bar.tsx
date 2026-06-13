@@ -3,7 +3,8 @@ import Link from "next/link";
 const ACCENT = "var(--c-kicker)";
 
 // Canary wordmark: rendered in the normal sans used across the app (same as
-// the "Launch app" button). The logo mask is filled canary-orange.
+// the "Launch app" button). The logo mask is filled with currentColor, so it
+// is black on the light header and flips to light on the dark footer.
 // Optional label (e.g. "Market") renders as a finer "_Label".
 export function Wordmark({
   label,
@@ -12,7 +13,7 @@ export function Wordmark({
   label?: string;
   size?: "large" | "small";
 }) {
-  const iconSize = size === "small" ? 22 : 28;
+  const iconSize = size === "small" ? 19 : 24;
   const fontSize = size === "small" ? 16 : 20;
   return (
     <Link
@@ -21,7 +22,7 @@ export function Wordmark({
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 10,
+        gap: 7,
         textDecoration: "none",
         color: "inherit",
       }}
@@ -32,7 +33,7 @@ export function Wordmark({
           display: "inline-block",
           width: iconSize,
           height: iconSize,
-          backgroundColor: "#ee9259",
+          backgroundColor: "currentColor",
           WebkitMaskImage: "url(/logo.png)",
           maskImage: "url(/logo.png)",
           WebkitMaskSize: "contain",

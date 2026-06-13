@@ -7,7 +7,7 @@ import { Wordmark } from "@/components/top-bar";
 export function SiteFooter() {
   return (
     <footer className="canary-footer">
-      <div className="canary-footer-tagline">Ready to hedge onchain risk</div>
+      <div className="canary-footer-tagline">Ready to hedge onchain risk?</div>
 
       <div className="canary-footer-bottom">
         <Wordmark size="small" />

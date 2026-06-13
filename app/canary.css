@@ -74,12 +74,12 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
 }
 .canary-btn--accent {
   background: #ee9259;
-  color: #1e1e1e;
+  color: #ffffff;
   font-weight: 600;
   border: none;
 }
 .canary-btn--accent:hover {
-  filter: brightness(1.05);
+  filter: none;
 }
 
 /* launch button (arrow reveals on hover) */
@@ -494,6 +494,158 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
   }
 }
 
+/* ---- token cloud (Uniswap-style hero icons) ---------------------------- */
+/* full-bleed: the cloud spans the whole viewport, not just the content column */
+html {
+  overflow-x: clip;
+}
+.canary-cloud {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  z-index: 1;
+  pointer-events: none;
+  /* visible so a hovered pill expanding past an edge token isn't clipped;
+     points are sampled within the box so nothing else spills */
+  overflow: visible;
+}
+/* TokenIconPositioner: absolute, sized to the sampled point, staggered in.
+   --op is the per-token resting opacity; hover lifts it to 1. */
+/* The item is a pill: just the circular icon by default, expanding on hover
+   into a white capsule with the icon at full height on the left and the
+   left-aligned label to its right. */
+.canary-cloud-item {
+  position: absolute;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.5s ease, background 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.18s ease;
+  pointer-events: auto;
+}
+.canary-cloud-item[data-visible="true"] {
+  opacity: var(--op, 0.9);
+}
+/* The icon carries the per-token blur and a static tilt (no idle motion);
+   hover clears the blur and straightens it. It stays at the pill's full
+   height, filling the rounded left cap. */
+.canary-cloud-logo {
+  width: var(--size, 36px);
+  height: var(--size, 36px);
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+  filter: blur(var(--blur, 0px));
+  transform: rotate(var(--rot, 0deg));
+  transition: filter 0.18s ease, transform 0.18s ease;
+}
+.canary-cloud-item:hover {
+  z-index: 5;
+  background: #ffffff;
+  border-color: color-mix(
+    in srgb,
+    var(--brand, #ee9259) 24%,
+    rgba(30, 30, 30, 0.12)
+  );
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+.canary-cloud-item[data-visible="true"]:hover {
+  opacity: 1;
+}
+.canary-cloud-item:hover .canary-cloud-logo {
+  filter: blur(0);
+  transform: rotate(0deg);
+}
+/* Label inside the pill, to the right of the icon; collapsed until hover. */
+.canary-cloud-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  white-space: nowrap;
+  max-width: 0;
+  margin: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.2s ease, opacity 0.15s ease, margin 0.2s ease;
+}
+.canary-cloud-item:hover .canary-cloud-card {
+  max-width: 180px;
+  opacity: 1;
+  margin: 0 14px 0 9px;
+}
+/* Ticker: smaller label line. */
+.canary-cloud-amt {
+  font-family: var(--sans-stack);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(30, 30, 30, 0.6);
+  line-height: 1.25;
+}
+/* "available": light label text; only the amount inside is emphasised. */
+.canary-cloud-sub {
+  font-family: var(--sans-stack);
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(30, 30, 30, 0.5);
+}
+/* The "$XXXM" amount: heavier and black. */
+.canary-cloud-val {
+  font-weight: 700;
+  color: #1e1e1e;
+}
+.canary-cloud-plus {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  /* content-box so the 36px + 2px border == the 36px logo + figure border,
+     keeping placeholders aligned to the token grid */
+  box-sizing: content-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border-radius: 50%;
+  background: #e8e6e1;
+  border: 1px solid rgba(30, 30, 30, 0.14);
+  color: rgba(30, 30, 30, 0.55);
+  pointer-events: none;
+  user-select: none;
+}
+.canary-how-zone {
+  position: relative;
+}
+/* wraps How it works + Simple/Expert so the stickers can span both */
+.canary-mid-zone {
+  position: relative;
+}
+/* full-bleed overlay so the margin stickers sit outside the content column */
+.canary-edge-stickers {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* zone that holds draggable stickers around the dark footer card */
+.canary-footer-zone {
+  position: relative;
+  margin-top: 72px;
+}
+
 .canary-step {
   border: 1px solid rgba(30, 30, 30, 0.12);
   border-radius: 14px;
@@ -596,7 +748,7 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
 /* striped fine line between Proposed and Available */
 .canary-divider {
   height: 1px;
-  margin: 32px 0 24px;
+  margin: 36px 0;
   background-image: repeating-linear-gradient(
     90deg,
     var(--c-border) 0 6px,
@@ -688,11 +840,16 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
 
 /* ---- footer (dark rounded card, wider than the content column) ---------- */
 .canary-footer {
-  margin-top: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 230px;
+  box-sizing: border-box;
+  margin-top: 56px;
   /* extend beyond the text column out to the shell padding edges */
   margin-left: -32px;
   margin-right: -32px;
-  padding: 60px 32px;
+  padding: 32px;
   border-radius: 16px;
   background: #15181c;
   color: #eaeaea;
@@ -711,7 +868,7 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  margin-top: 44px;
+  margin-top: 0;
 }
 .canary-footer-links {
   display: flex;
@@ -741,14 +898,14 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
   position: absolute;
   top: 44%;
   left: 50%;
-  width: 700px;
-  height: 640px;
+  width: 1000px;
+  height: 960px;
   transform: translate(-50%, -50%);
   z-index: 0;
   pointer-events: none;
-  /* fade out toward the top and bottom */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 26%, #000 74%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 26%, #000 74%, transparent 100%);
+  /* fade toward top and bottom but keep the edges partly visible (not to 0) */
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35) 0%, #000 32%, #000 68%, rgba(0, 0, 0, 0.35) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35) 0%, #000 32%, #000 68%, rgba(0, 0, 0, 0.35) 100%);
 }
 .canary-ring {
   position: absolute;
@@ -760,10 +917,10 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
   animation: canary-spin 70s linear infinite;
 }
 .canary-ring:nth-child(1) {
-  animation-duration: 55s;
+  animation-duration: 95s;
 }
 .canary-ring:nth-child(2) {
-  animation-duration: 85s;
+  animation-duration: 150s;
   animation-direction: reverse;
   border-color: rgba(30, 30, 30, 0.18);
 }
