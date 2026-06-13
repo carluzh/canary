@@ -16,3 +16,10 @@ tmp-test-*.webp
 npm-debug.log*
 yarn-error.log*
 yarn-debug.log*
+
+# Foundry (contracts/)
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/deployments.json
+contracts/.env
