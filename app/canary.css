@@ -1,0 +1,352 @@
+/* Canary — prediction-market UI layer, built on the onemore design tokens
+   (warm #ee9259 accent, #1e1e1e ink, #eaeaea ground, Radley / Pixelify /
+   JetBrains Mono). Kept separate from globals.css so the base system is intact. */
+
+.canary-shell {
+  position: relative;
+  min-height: 100vh;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 32px 96px;
+  font-family: var(--sans-stack);
+  color: #1e1e1e;
+}
+
+/* nav */
+.canary-nav {
+  color: rgba(30, 30, 30, 0.62);
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+.canary-nav:hover {
+  color: #1e1e1e;
+}
+
+/* buttons */
+.canary-btn {
+  font-family: var(--sans-stack);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #1e1e1e;
+  transition: filter 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+.canary-btn--ink {
+  background: #1e1e1e;
+  color: #fff;
+}
+.canary-btn--ink:hover {
+  filter: brightness(1.3);
+}
+.canary-btn--ghost {
+  border-color: rgba(30, 30, 30, 0.18);
+  font-family: var(--font-mono);
+}
+.canary-btn--ghost:hover {
+  border-color: #1e1e1e;
+}
+.canary-btn--warn {
+  background: #ee9259;
+  color: #1e1e1e;
+}
+.canary-btn--warn:hover {
+  filter: brightness(1.05);
+}
+.canary-btn--accent {
+  background: linear-gradient(to right, #ee9259 0%, #eedbaf 100%);
+  color: #1e1e1e;
+  font-weight: 600;
+}
+.canary-btn--accent:hover {
+  filter: brightness(1.04);
+}
+.canary-btn--block {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+}
+.canary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* segmented control (mode toggle + filters) */
+.canary-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid rgba(30, 30, 30, 0.14);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.canary-seg-item {
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 6px;
+  color: rgba(30, 30, 30, 0.55);
+  background: transparent;
+  border: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+.canary-seg-item[data-active="true"] {
+  background: #1e1e1e;
+  color: #fff;
+}
+
+/* cards + grid */
+.canary-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(30, 30, 30, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 18px;
+  transition: border-color 180ms ease, transform 180ms ease,
+    box-shadow 180ms ease;
+}
+.canary-card:hover {
+  border-color: rgba(30, 30, 30, 0.28);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(30, 30, 30, 0.06);
+}
+.canary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+/* detail layout */
+.canary-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 28px;
+  align-items: start;
+}
+.canary-detail-aside {
+  position: sticky;
+  top: 20px;
+}
+@media (max-width: 860px) {
+  .canary-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .canary-detail-aside {
+    position: static;
+  }
+}
+
+/* typographic helpers */
+.canary-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #c97849;
+  text-transform: uppercase;
+}
+.canary-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #4a4a4a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.canary-mono {
+  font-family: var(--font-mono);
+}
+
+/* YES/NO probability bar */
+.canary-bar {
+  height: 8px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(170, 95, 110, 0.22);
+  display: flex;
+}
+.canary-bar-yes {
+  background: linear-gradient(to right, #789b55, #9bbb6f);
+}
+
+/* stats */
+.canary-stat-label {
+  font-size: 11px;
+  color: rgba(30, 30, 30, 0.5);
+}
+.canary-stat-value {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: #1e1e1e;
+}
+
+/* trade panel */
+.canary-panel {
+  border: 1px solid rgba(30, 30, 30, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 18px;
+}
+.canary-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  padding: 10px 12px;
+  border: 1px solid rgba(30, 30, 30, 0.18);
+  border-radius: 8px;
+  background: #fff;
+  color: #1e1e1e;
+}
+.canary-input:focus {
+  outline: none;
+  border-color: #ee9259;
+}
+.canary-toggle-buysell {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(30, 30, 30, 0.14);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.canary-toggle-buysell button {
+  flex: 1;
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  color: rgba(30, 30, 30, 0.55);
+  background: transparent;
+}
+.canary-toggle-buysell button[data-active="true"][data-side="yes"] {
+  background: #789b55;
+  color: #fff;
+}
+.canary-toggle-buysell button[data-active="true"][data-side="no"] {
+  background: #aa5f6e;
+  color: #fff;
+}
+
+/* info banner */
+.canary-banner {
+  font-size: 12.5px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(238, 146, 89, 0.16);
+  color: #7a4a2a;
+  border: 1px solid rgba(238, 146, 89, 0.3);
+}
+
+/* ---- marketing / hero ---------------------------------------------------- */
+.canary-hero {
+  position: relative;
+  min-height: 74vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 0 64px;
+}
+.canary-hero-content {
+  position: relative;
+  z-index: 2;
+}
+.canary-floats {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes canary-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--rot, 0deg));
+  }
+  50% {
+    transform: translateY(-14px) rotate(var(--rot, 0deg));
+  }
+}
+.canary-float {
+  position: absolute;
+  animation: canary-float 7s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+  will-change: transform;
+  pointer-events: auto;
+}
+
+.canary-chip {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(30, 30, 30, 0.12);
+  border-radius: 13px;
+  padding: 10px 13px;
+  box-shadow: 0 12px 34px rgba(30, 30, 30, 0.09);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.canary-float:hover .canary-chip {
+  transform: scale(1.06);
+  box-shadow: 0 18px 44px rgba(30, 30, 30, 0.16);
+}
+.canary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(30, 30, 30, 0.92);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(30, 30, 30, 0.16);
+  white-space: nowrap;
+}
+.canary-pill--accent {
+  background: linear-gradient(to right, #ee9259, #eedbaf);
+  color: #1e1e1e;
+}
+.canary-sticker {
+  font-family: var(--font-radley);
+  font-size: 14px;
+  background: #1e1e1e;
+  color: #fff;
+  padding: 9px 14px;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(30, 30, 30, 0.18);
+  white-space: nowrap;
+}
+.canary-sticker strong {
+  color: #ee9259;
+}
+
+.canary-step {
+  border: 1px solid rgba(30, 30, 30, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 22px;
+}
+.canary-step-n {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #c97849;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 960px) {
+  .canary-floats {
+    display: none;
+  }
+  .canary-hero {
+    min-height: 54vh;
+  }
+}
