@@ -1,0 +1,38 @@
+# Canary contracts — Foundry config
+#
+# evm_version is pinned to "paris" so the bytecode avoids PUSH0 / transient
+# storage / MCOPY. New L2s (Arc testnet included) sometimes lag on post-Paris
+# opcodes; Paris bytecode runs everywhere.
+
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.24"
+evm_version = "paris"
+optimizer = true
+optimizer_runs = 200
+verbosity = 2
+# Deploy.s.sol writes deployments.json for the frontend.
+fs_permissions = [{ access = "write", path = "./deployments.json" }]
+
+[profile.default.fuzz]
+runs = 1024
+
+[profile.default.invariant]
+runs = 256
+depth = 64
+fail_on_revert = false
+
+# Heavier profile for CI / pre-demo sanity runs: `FOUNDRY_PROFILE=ci forge test`
+[profile.ci.fuzz]
+runs = 4096
+
+[profile.ci.invariant]
+runs = 512
+depth = 128
+
+[rpc_endpoints]
+# Values come from .env (see .env.example). Use with: forge script ... --rpc-url arc_testnet
+arc_testnet = "${ARC_RPC_URL}"
+sepolia = "${SEPOLIA_RPC_URL}"
