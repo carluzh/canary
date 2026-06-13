@@ -13,7 +13,7 @@ Deployed and seeded on testnet. Deployer: `0xb135A894e1fb22f12AE375E5A2127171547
 | RelayedFeed (USDe/USD via CCIP) | `0xA795Baa9E4300EA015B094D14E152f123Edc94ad` |
 | Relayed market — "USDe < $0.95 for 1h (live Chainlink via CCIP)" | `0x15e536171034089B4114B3a85fDb8Eddf3Df8422` |
 
-Both markets are seeded with an underwriter ask: demo market YES @ **$0.06 (6% implied depeg probability)**, relayed market YES @ **$0.05 (5%)**.
+Both markets are seeded with an underwriter ask: demo market YES @ **$0.015 (1.5% implied depeg probability)**, relayed market YES @ **$0.02 (2%)** — a realistic low-single-digit USDe tail with a slight term structure (the 30-day relayed market prices marginally above the 7-day demo market).
 
 ## Ethereum Sepolia (CCIP relay source)
 

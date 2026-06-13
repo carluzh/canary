@@ -54,14 +54,14 @@ contract DemoSeed is Script {
         usdc.approve(address(market), type(uint256).max);
         vm.stopBroadcast();
 
-        // --- bob underwrites: mints 10k sets, asks 6c per dollar of YES cover
+        // --- bob underwrites: mints 10k sets, asks 2c per dollar of YES cover
         vm.startBroadcast(BOB_PK);
         usdc.approve(address(market), type(uint256).max);
         market.mintSets(10_000e6);
-        uint256 askId = market.placeOrder(true, false, 0.06e6, 10_000e6);
+        uint256 askId = market.placeOrder(true, false, 0.02e6, 10_000e6);
         vm.stopBroadcast();
 
-        // --- alice buys $5k of coverage at the ask (premium: $300)
+        // --- alice buys $5k of coverage at the ask (premium: $100)
         vm.startBroadcast(ALICE_PK);
         market.fillOrder(askId, 5_000e6);
         vm.stopBroadcast();
@@ -70,7 +70,7 @@ contract DemoSeed is Script {
         console2.log("Feed (USDe/USD):", address(feed));
         console2.log("Factory:        ", address(factory));
         console2.log("Market:         ", address(market));
-        console2.log("Open ask: 5,000 YES left at $0.06 (implied depeg probability 6%)");
+        console2.log("Open ask: 5,000 YES left at $0.02 (implied depeg probability 2%)");
         console2.log("alice holds 5,000 YES (coverage), bob holds 10,000 NO + premium");
     }
 }

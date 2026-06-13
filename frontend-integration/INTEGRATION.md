@@ -47,7 +47,7 @@ shaped as `OrderBook` in `canary.ts`. List markets via
 
 **Underwrite (Blink)** — `approveUsdc(usdc, market, amount)` then the two calls
 from `planUnderwrite(market, amount, premiumPrice)`. `premiumPrice` is
-PRICE_SCALE-scaled (e.g. `60_000n` = $0.06 = 6%).
+PRICE_SCALE-scaled (e.g. `20_000n` = $0.02 = 2%).
 
 **Portfolio** — `yesBalance`/`noBalance`; after resolution show `redeem()`.
 

@@ -28,7 +28,7 @@ One contract per market keeps the mental model and the frontend simple: every ma
 
 **Order book** (price discovery — YES price = premium = implied probability):
 
-- `placeOrder(isYes, isBuy, price, amount)` — limit order. `price` is scaled by 1e6 and must be in (0, 1e6): `60_000` = $0.06 per $1 of cover = 6% implied probability. Buy orders escrow USDC (rounded up); sell orders escrow the outcome tokens.
+- `placeOrder(isYes, isBuy, price, amount)` — limit order. `price` is scaled by 1e6 and must be in (0, 1e6): `20_000` = $0.02 per $1 of cover = 2% implied probability. Buy orders escrow USDC (rounded up); sell orders escrow the outcome tokens.
 - `fillOrder(orderId, amount)` — take any open order, partially or fully. No matching engine: the frontend lists open orders (`openOrders()` view or `OrderPlaced`/`OrderFilled` events) and users hit them. Rounding always favors safety: partial fills of buy escrow round down (final fill sweeps the dust, so nothing is ever stranded); sell fills round the taker's cost up (tokens are never free).
 - `cancelOrder(orderId)` — maker recovers escrow; works in **any** state so funds can't be stranded after resolution.
 
