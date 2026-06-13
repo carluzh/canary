@@ -16,7 +16,7 @@ import { usd } from "@/lib/format";
 // and the per-token size/opacity/tilt, so the cloud is identical on every load
 // (for a given viewport) rather than re-randomised each render. Bump SEED to
 // reshuffle the arrangement.
-const SEED = 0x9e3779b9;
+const SEED = 0x9e3879b9;
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -47,6 +47,32 @@ const CANVAS_SCALE_X = 0.92;
 const MIN_DISTANCE = 120;
 const MAX_DISTANCE = 180;
 const TOKENS_PER_SIDE = 5;
+// If the hover card (opening rightward) would need more than this much room to
+// the right of the icon than the viewport allows, open it leftward instead.
+const CARD_FLIP_BUDGET = 200;
+
+// Center-out token priority: the biggest stablecoins are assigned to the
+// positions nearest the headline, the rest fan outward. This only changes which
+// token lands on which (seed-fixed) position, never the positions themselves.
+const CLOUD_ORDER = [
+  "USDT",
+  "USDe",
+  "DAI",
+  "USDS",
+  "USD1",
+  "USDG",
+  "GHO",
+  "USD0",
+  "crvUSD",
+  "BOLD",
+];
+const ORDERED_STABLES: Stable[] = [
+  ...CLOUD_ORDER.map((sym) => STABLES.find((s) => s.symbol === sym)).filter(
+    (s): s is Stable => Boolean(s)
+  ),
+  // Any stables not listed above still appear, after the prioritised ones.
+  ...STABLES.filter((s) => !CLOUD_ORDER.includes(s.symbol)),
+];
 
 type CloudPoint = {
   x: number;
@@ -56,6 +82,10 @@ type CloudPoint = {
   opacity: number;
   rotation: number;
   delay: number;
+  // When true the icon is anchored by its right edge (rightX) and the hover
+  // card opens leftward, so a right-edge token's card stays in the viewport.
+  flip: boolean;
+  rightX: number;
   stable: Stable;
 };
 
@@ -173,13 +203,23 @@ function buildPoints(
     ...pickSpread(right, TOKENS_PER_SIDE),
   ];
 
-  return chosen.map((c, i) => {
+  // Assign tokens center-out: positions closest to the headline get the
+  // highest-priority stablecoins (ORDERED_STABLES). Positions are untouched.
+  const byCenter = [...chosen].sort(
+    (a, b) => Math.abs(a.cx - w / 2) - Math.abs(b.cx - w / 2)
+  );
+  return byCenter.map((c, i) => {
     const { cx, cy, ...rest } = c;
     void cy;
+    // Flip the card to open leftward if opening rightward would run it past the
+    // viewport's right edge.
+    const flip = rest.x + rest.size + CARD_FLIP_BUDGET > w;
     return {
       ...rest,
       delay: Math.abs(cx - w / 2) / 800,
-      stable: STABLES[i % STABLES.length]!,
+      flip,
+      rightX: w - (rest.x + rest.size),
+      stable: ORDERED_STABLES[i % ORDERED_STABLES.length]!,
     } satisfies CloudPoint;
   });
 }
@@ -240,12 +280,13 @@ export function TokenCloud() {
         return (
           <figure
             key={`${s.symbol}-${i}`}
-            className="canary-cloud-item"
+            className={`canary-cloud-item${p.flip ? " canary-cloud-item--r" : ""}`}
             data-visible={visible.has(i)}
             style={
               {
                 top: `${p.y}px`,
-                left: `${p.x}px`,
+                left: p.flip ? undefined : `${p.x}px`,
+                right: p.flip ? `${p.rightX}px` : undefined,
                 ["--size"]: `${p.size}px`,
                 ["--blur"]: `${p.blur}px`,
                 ["--op"]: p.opacity,
@@ -258,11 +299,11 @@ export function TokenCloud() {
               <img src={s.logo} alt="" className="canary-cloud-logo" />
             ) : null}
             <figcaption className="canary-cloud-card">
+              <span className="canary-cloud-amt">{s.symbol}</span>
               <span className="canary-cloud-sub">
                 <span className="canary-cloud-val">{usd(available)}</span>{" "}
                 available
               </span>
-              <span className="canary-cloud-amt">{s.symbol}</span>
             </figcaption>
           </figure>
         );

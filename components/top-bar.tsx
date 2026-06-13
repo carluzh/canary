@@ -19,6 +19,7 @@ export function Wordmark({
     <Link
       href="/"
       aria-label={`Canary${label ? ` ${label}` : ""} - home`}
+      className="canary-wordmark"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -29,11 +30,14 @@ export function Wordmark({
     >
       <span
         aria-hidden
+        className="canary-wordmark-mark"
         style={{
           display: "inline-block",
           width: iconSize,
           height: iconSize,
-          backgroundColor: "currentColor",
+          // driven by a custom prop so the hover rule can recolor the mask
+          backgroundColor: "var(--wordmark-ink, currentColor)",
+          transition: "background-color 0.18s ease, transform 0.18s ease",
           WebkitMaskImage: "url(/logo.png)",
           maskImage: "url(/logo.png)",
           WebkitMaskSize: "contain",

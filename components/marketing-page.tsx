@@ -121,7 +121,7 @@ export function MarketingPage() {
           <a
             href="#how"
             className="canary-nav"
-            style={{ fontSize: 14, fontWeight: 600 }}
+            style={{ fontSize: 14, fontWeight: 500 }}
           >
             How it works
           </a>
@@ -172,15 +172,15 @@ export function MarketingPage() {
             style={{
               margin: "24px auto 0",
               maxWidth: 540,
-              fontFamily: "var(--font-radley)",
-              fontSize: 18,
-              lineHeight: 1.5,
+              fontFamily: "var(--sans-stack)",
+              fontSize: 17,
+              lineHeight: 1.55,
               color: "rgba(30,30,30,0.62)",
             }}
           >
-            Binary insurance markets on stablecoins, settled on Arc. Buy
-            parametric cover in one click, or trade YES and NO to underwrite and
-            earn. Resolved by Chainlink.
+            Buy parametric cover in one click, or trade YES and NO to
+            underwrite and earn. Introducing the world&apos;s first insurance
+            instrument built on prediction markets.
           </p>
           <div
             style={{
@@ -210,7 +210,7 @@ export function MarketingPage() {
       <section
         id="how"
         className="canary-how-zone"
-        style={{ marginTop: 48, scrollMarginTop: 24 }}
+        style={{ marginTop: 8, scrollMarginTop: 24 }}
       >
         <h2
           style={{
@@ -222,25 +222,53 @@ export function MarketingPage() {
         >
           How it works
         </h2>
-        <div
-          className="canary-grid"
-          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
-        >
-          <Step
-            n="01"
-            title="Pick a risk"
-            body="Choose a market. A stablecoin depeg (USDe, USDC, DAI) or a protocol exploit (Aave, Morpho)."
-          />
-          <Step
-            n="02"
-            title="Cover or underwrite"
-            body="Buy YES to hedge the event for a small premium, or sell NO to underwrite and earn premium plus idle-collateral yield."
-          />
-          <Step
-            n="03"
-            title="Auto-settles on Arc"
-            body="A Chainlink price feed reads the asset. A CCIP message settles the market on Arc. Winning tokens redeem for $1 of USDC."
-          />
+        {/* steps row, with the draggable stickers as an absolute overlay above
+            it so they never reposition the step cards */}
+        <div className="canary-steps">
+          <div className="canary-step-stickers" aria-hidden>
+            {/* bottom-left edge of the 01 card */}
+            <Draggable className="canary-drag" style={{ left: -14, bottom: -18 }}>
+              <div style={{ transform: "rotate(5deg)" }}>
+                <Sticker logo="/tokens/arc.png" color="#1B3158" label="Settled on Arc" />
+              </div>
+            </Draggable>
+            {/* top-right edge of the 03 card */}
+            <Draggable className="canary-drag" style={{ right: -14, top: -18 }}>
+              <div style={{ transform: "rotate(-5deg)" }}>
+                <Sticker
+                  logo="/tokens/chainlink.png"
+                  color="#375BD2"
+                  label="Chainlink resolved"
+                />
+              </div>
+            </Draggable>
+            {/* bottom-right edge of the 03 card */}
+            <Draggable className="canary-drag" style={{ right: -14, bottom: -60 }}>
+              <div style={{ transform: "rotate(-6deg)" }}>
+                <AvailableInsuranceSticker />
+              </div>
+            </Draggable>
+          </div>
+          <div
+            className="canary-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
+          >
+            <Step
+              n="01"
+              title="Pick a risk"
+              body="Choose a market. A stablecoin depeg (USDe, USDC, DAI) or a protocol exploit (Aave, Morpho)."
+            />
+            <Step
+              n="02"
+              title="Cover or underwrite"
+              body="Buy YES to hedge the event for a small premium, or sell NO to underwrite and earn premium plus idle-collateral yield."
+            />
+            <Step
+              n="03"
+              title="Auto-settles on Arc"
+              body="A Chainlink price feed reads the asset. A CCIP message settles the market on Arc. Winning tokens redeem for $1 of USDC."
+            />
+          </div>
         </div>
       </section>
 
@@ -314,32 +342,12 @@ export function MarketingPage() {
           </div>
         </div>
       </section>
-
-        {/* stickers span the whole How it works + Simple/Expert region */}
-        <div className="canary-edge-stickers">
-          <Draggable className="canary-drag" style={{ top: "4%", left: "1.5%" }}>
-            <div style={{ transform: "rotate(-8deg)" }}>
-              <Sticker logo="/tokens/arc.png" color="#1B3158" label="Settled on Arc" />
-            </div>
-          </Draggable>
-          <Draggable className="canary-drag" style={{ top: "84%", left: "3%" }}>
-            <div style={{ transform: "rotate(6deg)" }}>
-              <AvailableInsuranceSticker />
-            </div>
-          </Draggable>
-          <Draggable className="canary-drag" style={{ top: "44%", right: "1.5%" }}>
-            <div style={{ transform: "rotate(-5deg)" }}>
-              <Sticker
-                logo="/tokens/chainlink.png"
-                color="#375BD2"
-                label="Chainlink resolved"
-              />
-            </div>
-          </Draggable>
-        </div>
       </div>
 
       <SiteFooter />
+
+      {/* extra scrollable breathing room below the footer */}
+      <div aria-hidden style={{ height: 30 }} />
     </main>
   );
 }

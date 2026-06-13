@@ -323,13 +323,13 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
 /* ---- marketing / hero ---------------------------------------------------- */
 .canary-hero {
   position: relative;
-  min-height: 74vh;
+  min-height: 62vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 32px 0 64px;
+  padding: 32px 0 16px;
 }
 .canary-hero-content {
   position: relative;
@@ -365,6 +365,15 @@ body:has(.canary-shell[data-theme="expert"]) { background: #0e1013; }
 }
 .canary-drag:active {
   cursor: grabbing;
+}
+
+/* wordmark (header + footer): the logo mark turns brand orange and tilts up
+   on hover */
+.canary-wordmark:hover {
+  --wordmark-ink: var(--c-accent);
+}
+.canary-wordmark:hover .canary-wordmark-mark {
+  transform: rotate(-15deg);
 }
 
 .canary-chip {
@@ -512,6 +521,12 @@ html {
      points are sampled within the box so nothing else spills */
   overflow: visible;
 }
+/* At rest the cloud sits behind the hero copy (z-index 1 < 2). While a token is
+   hovered, lift the whole cloud above the copy so the revealed card isn't
+   clipped behind the centre description. */
+.canary-hero:has(.canary-cloud-item:hover) .canary-cloud {
+  z-index: 3;
+}
 /* TokenIconPositioner: absolute, sized to the sampled point, staggered in.
    --op is the per-token resting opacity; hover lifts it to 1. */
 /* The item is a pill: just the circular icon by default, expanding on hover
@@ -583,12 +598,24 @@ html {
   opacity: 1;
   margin: 0 14px 0 9px;
 }
-/* Ticker: smaller label line. */
+/* Flipped items (near the right edge): icon anchored by its right edge, card
+   opens leftward so it never clips off-screen. */
+.canary-cloud-item--r {
+  flex-direction: row-reverse;
+}
+.canary-cloud-item--r .canary-cloud-card {
+  align-items: flex-end;
+  text-align: right;
+}
+.canary-cloud-item--r:hover .canary-cloud-card {
+  margin: 0 9px 0 14px;
+}
+/* Ticker (top line): heavier and black. */
 .canary-cloud-amt {
   font-family: var(--sans-stack);
   font-size: 11px;
-  font-weight: 600;
-  color: rgba(30, 30, 30, 0.6);
+  font-weight: 700;
+  color: #1e1e1e;
   line-height: 1.25;
 }
 /* "available": light label text; only the amount inside is emphasised. */
@@ -598,10 +625,10 @@ html {
   font-weight: 400;
   color: rgba(30, 30, 30, 0.5);
 }
-/* The "$XXXM" amount: heavier and black. */
+/* The "$XXXM" amount: lighter, muted label weight. */
 .canary-cloud-val {
-  font-weight: 700;
-  color: #1e1e1e;
+  font-weight: 600;
+  color: rgba(30, 30, 30, 0.6);
 }
 .canary-cloud-plus {
   position: absolute;
@@ -646,6 +673,19 @@ html {
   margin-top: 72px;
 }
 
+/* steps row is the positioning context for the sticker overlay */
+.canary-steps {
+  position: relative;
+}
+/* draggable stickers floating above the steps; absolute + zero-footprint so
+   they never reposition the step cards. .canary-drag re-enables pointer events
+   for dragging. */
+.canary-step-stickers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
 .canary-step {
   border: 1px solid rgba(30, 30, 30, 0.12);
   border-radius: 14px;
@@ -704,7 +744,7 @@ html {
   color: #eaeaea;
 }
 .canary-mode-card--expert:hover {
-  border-color: rgba(140, 196, 116, 0.5);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 .canary-mode-card--expert .canary-mode-card-title {
   color: #f4f4f4;
