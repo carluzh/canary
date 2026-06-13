@@ -1,33 +1,115 @@
-import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
-import { Wordmark } from "@/components/top-bar";
-import { ConnectWallet } from "@/components/connect-wallet";
+"use client";
 
-// A floating, gently-bobbing element orbiting the hero value prop — echoes the
-// onemore landing's hovering stickers. Positioned via `pos`, with per-element
-// delay/rotation through CSS custom properties.
-function Float({
-  pos,
-  delay = "0s",
-  rot = "0deg",
-  children,
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { CSSProperties } from "react";
+import { Wordmark } from "@/components/top-bar";
+import { Draggable } from "@/components/draggable";
+import { SiteFooter } from "@/components/site-footer";
+import { STABLES } from "@/lib/stables";
+import { usd } from "@/lib/format";
+import { useMode } from "@/lib/web3/mode";
+
+// One uniform floating sticker. Every sticker shares the exact same shell
+// (.canary-sticker-card / row / bar / fill); only color, logo, label, optional
+// right-aligned meta, and the bar fill width differ. Tinted via --brand.
+// Stickers share one shell but render in three shapes:
+//  available -> "$X available" + bottom bar (only these get a bar)
+//  apy       -> logo + symbol + a prominent APY, no bar
+//  plain     -> logo + label (Arc / Chainlink), no bar
+function Sticker({
+  logo,
+  color,
+  label,
+  availableUsd,
+  fill,
+  apy,
 }: {
-  pos: CSSProperties;
-  delay?: string;
-  rot?: string;
-  children: ReactNode;
+  logo: string;
+  color: string;
+  label?: string;
+  availableUsd?: number;
+  fill?: number; // 0..100
+  apy?: string;
 }) {
   return (
     <div
-      className="canary-float"
-      style={{ ...pos, "--d": delay, "--rot": rot } as CSSProperties}
+      className="canary-sticker-card"
+      style={{ ["--brand"]: color } as CSSProperties}
     >
-      {children}
+      <div className="canary-sticker-row">
+        <img src={logo} alt="" />
+        {availableUsd != null ? (
+          <span className="canary-sticker-label">
+            {usd(availableUsd)}{" "}
+            <span className="canary-sticker-sub">available</span>
+          </span>
+        ) : apy != null ? (
+          <>
+            <span className="canary-sticker-label">{label}</span>
+            <span className="canary-sticker-apy">{apy}</span>
+          </>
+        ) : (
+          <span className="canary-sticker-label">{label}</span>
+        )}
+      </div>
+      {availableUsd != null ? (
+        <div className="canary-sticker-bar">
+          <div className="canary-sticker-fill" style={{ width: `${fill}%` }} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Bottom-right summary sticker: total available insurance + a logo line that
+// loops infinitely through all available token logos.
+function AvailableInsuranceSticker() {
+  const totalAvailable = STABLES.reduce(
+    (sum, s) => sum + (s.capacityTotal - s.capacityUsed),
+    0
+  );
+  const logos = STABLES.map((s) => s.logo).filter(
+    (l): l is string => Boolean(l)
+  );
+  const loop = [...logos, ...logos];
+  return (
+    <div
+      className="canary-sticker-card"
+      style={{ ["--brand"]: "#ee9259", width: 222 } as CSSProperties}
+    >
+      <div className="canary-sticker-row">
+        <span className="canary-sticker-label">Available Insurance</span>
+        <span className="canary-sticker-label" style={{ marginLeft: "auto" }}>
+          {usd(totalAvailable)}
+        </span>
+      </div>
+      <div className="canary-logo-marquee">
+        <div className="canary-logo-track">
+          {loop.map((l, i) => (
+            <img key={i} src={l} alt="" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 export function MarketingPage() {
+  const { setMode } = useMode();
+  const router = useRouter();
+
+  const enter = (mode: "simple" | "expert") => {
+    setMode(mode);
+    router.push("/markets");
+  };
+
+  const usdt = STABLES.find((s) => s.symbol === "USDT")!;
+  const usde = STABLES.find((s) => s.symbol === "USDe")!;
+
+  const availablePct = (capacityTotal: number, capacityUsed: number) =>
+    Math.round(((capacityTotal - capacityUsed) / capacityTotal) * 100);
+
   return (
     <main className="canary-shell" style={{ paddingTop: 24 }}>
       <header
@@ -40,89 +122,76 @@ export function MarketingPage() {
         }}
       >
         <Wordmark />
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <a href="#how" className="canary-nav" style={{ fontSize: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <a
+            href="#how"
+            className="canary-nav"
+            style={{ fontSize: 14, fontWeight: 600 }}
+          >
             How it works
           </a>
-          <ConnectWallet />
-          <Link href="/markets" className="canary-btn canary-btn--ink">
-            Launch app →
+          <Link href="/markets" className="canary-launch">
+            Launch app
+            <span className="canary-launch-arrow">→</span>
           </Link>
         </div>
       </header>
 
       {/* Hero */}
       <section className="canary-hero">
-        <div className="canary-floats" aria-hidden>
-          <Float pos={{ top: "15%", left: "3%" }} rot="-5deg" delay="0s">
-            <div className="canary-chip">
-              <div className="canary-kicker" style={{ marginBottom: 4 }}>
-                USDe · depeg
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 13,
-                }}
-              >
-                <span style={{ color: "#5a7a3a" }}>YES 5¢</span>
-                <span style={{ color: "#aa5f6e" }}>NO 95¢</span>
-              </div>
-            </div>
-          </Float>
+        <div className="canary-rings" aria-hidden>
+          <div className="canary-ring" style={{ width: 380, height: 380 }} />
+          <div className="canary-ring" style={{ width: 600, height: 600 }} />
+        </div>
 
-          <Float pos={{ top: "11%", right: "4%" }} rot="4deg" delay="1.1s">
-            <div className="canary-chip">
-              <div className="canary-kicker" style={{ marginBottom: 4 }}>
-                Aave · exploit
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 13,
-                }}
-              >
-                <span style={{ color: "#5a7a3a" }}>YES 4¢</span>
-                <span style={{ color: "#aa5f6e" }}>NO 96¢</span>
-              </div>
-            </div>
-          </Float>
+        <div className="canary-floats">
+          {/* decorative 3-stars, draggable but static */}
+          <Draggable className="canary-drag" style={{ top: "6%", left: "50%", marginLeft: -36 }}>
+            <img src="/3-stars.png" alt="" width={72} style={{ opacity: 0.92, display: "block" }} />
+          </Draggable>
 
-          <Float pos={{ top: "6%", left: "50%", marginLeft: -36 }} delay="0.4s">
-            <span className="stars-sway" style={{ display: "inline-block" }}>
-              <img src="/3-stars.png" alt="" width={72} style={{ opacity: 0.92 }} />
-            </span>
-          </Float>
+          {/* top-left */}
+          <Draggable className="canary-drag" style={{ top: "13%", left: "2%" }}>
+            <Sticker
+              logo="/tokens/usdt.png"
+              color="#26A17B"
+              availableUsd={usdt.capacityTotal - usdt.capacityUsed}
+              fill={availablePct(usdt.capacityTotal, usdt.capacityUsed)}
+            />
+          </Draggable>
 
-          <Float pos={{ top: "47%", left: "0%" }} rot="3deg" delay="0.7s">
-            <span className="canary-pill">Settled on Arc</span>
-          </Float>
+          {/* top-right */}
+          <Draggable className="canary-drag" style={{ top: "11%", right: "3%" }}>
+            <Sticker
+              logo="/tokens/usde.png"
+              color="#2D2D2D"
+              availableUsd={usde.capacityTotal - usde.capacityUsed}
+              fill={availablePct(usde.capacityTotal, usde.capacityUsed)}
+            />
+          </Draggable>
 
-          <Float pos={{ top: "52%", right: "1%" }} rot="-4deg" delay="1.6s">
-            <span className="canary-pill">Chainlink-resolved</span>
-          </Float>
+          {/* mid-left */}
+          <Draggable className="canary-drag" style={{ top: "48%", left: "0%" }}>
+            <Sticker logo="/tokens/arc.png" color="#1B3158" label="Settled on Arc" />
+          </Draggable>
 
-          <Float pos={{ bottom: "15%", left: "8%" }} rot="-3deg" delay="0.9s">
-            <span className="canary-sticker">
-              Payout up to <strong>20×</strong>
-            </span>
-          </Float>
+          {/* mid-right */}
+          <Draggable className="canary-drag" style={{ top: "46%", right: "1%" }}>
+            <Sticker logo="/tokens/dai.png" color="#F5AC37" label="DAI" apy="7.2% APY" />
+          </Draggable>
 
-          <Float pos={{ bottom: "13%", right: "9%" }} rot="5deg" delay="1.9s">
-            <span className="canary-pill canary-pill--accent">
-              LPs earn premium + yield
-            </span>
-          </Float>
+          {/* bottom */}
+          <Draggable className="canary-drag" style={{ bottom: "13%", left: "8%" }}>
+            <Sticker logo="/tokens/chainlink.png" color="#375BD2" label="Chainlink resolved" />
+          </Draggable>
+
+          {/* bottom-right */}
+          <Draggable className="canary-drag" style={{ bottom: "12%", right: "5%" }}>
+            <AvailableInsuranceSticker />
+          </Draggable>
         </div>
 
         <div className="canary-hero-content">
-          <div className="canary-kicker" style={{ marginBottom: 18 }}>
-            Onchain insurance markets · live on Arc
-          </div>
           <h1
             style={{
               margin: 0,
@@ -146,9 +215,9 @@ export function MarketingPage() {
               color: "rgba(30,30,30,0.62)",
             }}
           >
-            Binary markets to hedge stablecoin depegs and protocol exploits. Buy
-            parametric cover in one click — or underwrite and earn. Settled on
-            Arc, resolved by Chainlink.
+            Binary insurance markets on stablecoins, settled on Arc. Buy
+            parametric cover in one click, or trade YES and NO to underwrite and
+            earn. Resolved by Chainlink.
           </p>
           <div
             style={{
@@ -164,15 +233,9 @@ export function MarketingPage() {
               className="canary-btn canary-btn--accent"
               style={{ padding: "13px 22px", fontSize: 15 }}
             >
-              Launch app →
+              Launch app
+              <span className="canary-launch-arrow">→</span>
             </Link>
-            <a
-              href="#how"
-              className="canary-btn canary-btn--ghost"
-              style={{ padding: "13px 22px", fontSize: 15 }}
-            >
-              See how it works
-            </a>
           </div>
         </div>
       </section>
@@ -196,30 +259,43 @@ export function MarketingPage() {
           <Step
             n="01"
             title="Pick a risk"
-            body="Choose a market — a stablecoin depeg (USDe, USDC, DAI) or a protocol exploit (Aave, Morpho)."
+            body="Choose a market. A stablecoin depeg (USDe, USDC, DAI) or a protocol exploit (Aave, Morpho)."
           />
           <Step
             n="02"
             title="Cover or underwrite"
-            body="Buy YES to hedge the event for a small premium, or sell NO to underwrite and earn premium + idle-collateral yield."
+            body="Buy YES to hedge the event for a small premium, or sell NO to underwrite and earn premium plus idle-collateral yield."
           />
           <Step
             n="03"
             title="Auto-settles on Arc"
-            body="A Chainlink price feed reads the asset; a CCIP message settles the market on Arc. Winning tokens redeem for $1 of USDC."
+            body="A Chainlink price feed reads the asset. A CCIP message settles the market on Arc. Winning tokens redeem for $1 of USDC."
           />
         </div>
       </section>
 
       {/* Two modes */}
+      <div className="canary-divider" />
       <section style={{ marginTop: 48 }}>
         <div
           className="canary-grid"
           style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
         >
-          <div className="canary-card" style={{ cursor: "default" }}>
-            <div className="canary-kicker" style={{ marginBottom: 10 }}>
-              Simple — for protection
+          <div
+            className="canary-card canary-mode-card canary-mode-card--simple"
+            role="button"
+            tabIndex={0}
+            onClick={() => enter("simple")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                enter("simple");
+              }
+            }}
+          >
+            <div style={{ marginBottom: 12 }}>
+              <h3 className="canary-mode-card-title">Simple</h3>
+              <div className="canary-mode-card-desc">for protection</div>
             </div>
             <div
               style={{
@@ -235,20 +311,33 @@ export function MarketingPage() {
               happens. No order books, no jargon.
             </p>
           </div>
-          <div className="canary-card" style={{ cursor: "default" }}>
-            <div className="canary-kicker" style={{ marginBottom: 10 }}>
-              Expert — for traders & LPs
+          <div
+            className="canary-card canary-mode-card canary-mode-card--expert"
+            role="button"
+            tabIndex={0}
+            onClick={() => enter("expert")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                enter("expert");
+              }
+            }}
+          >
+            <div style={{ marginBottom: 12 }}>
+              <h3 className="canary-mode-card-title">Expert</h3>
+              <div className="canary-mode-card-desc">for traders and LPs</div>
             </div>
             <div
               style={{
                 fontFamily: "var(--font-radley)",
                 fontSize: 20,
                 marginBottom: 8,
+                color: "#f4f4f4",
               }}
             >
               Trade YES/NO and provide liquidity
             </div>
-            <p style={{ fontSize: 14, color: "rgba(30,30,30,0.6)", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 14, color: "rgba(234,234,234,0.62)", lineHeight: 1.55 }}>
               Live binary prices, probability bars, and an AMM. Underwrite risk,
               earn the spread plus yield on idle collateral.
             </p>
@@ -256,26 +345,7 @@ export function MarketingPage() {
         </div>
       </section>
 
-      {/* Footer CTA */}
-      <section style={{ marginTop: 64, textAlign: "center" }}>
-        <h2
-          style={{
-            fontFamily: "var(--font-radley)",
-            fontSize: "clamp(26px, 3.4vw, 40px)",
-            letterSpacing: "-0.02em",
-            margin: "0 0 18px",
-          }}
-        >
-          Ready to hedge onchain risk?
-        </h2>
-        <Link
-          href="/markets"
-          className="canary-btn canary-btn--accent"
-          style={{ padding: "13px 24px", fontSize: 15 }}
-        >
-          Launch app →
-        </Link>
-      </section>
+      <SiteFooter />
     </main>
   );
 }

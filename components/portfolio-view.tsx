@@ -3,8 +3,10 @@
 import { useAccount, useBalance } from "wagmi";
 import { SiteHeader } from "@/components/site-header";
 import { arcTestnet } from "@/lib/web3/chains";
+import { useMode } from "@/lib/web3/mode";
 
 export function PortfolioView() {
+  const { mode } = useMode();
   const { address, isConnected } = useAccount();
   const { data: bal } = useBalance({
     address,
@@ -13,7 +15,7 @@ export function PortfolioView() {
   });
 
   return (
-    <main className="canary-shell">
+    <main className="canary-shell" data-theme={mode === "expert" ? "expert" : "simple"}>
       <SiteHeader />
 
       <h1
@@ -37,7 +39,7 @@ export function PortfolioView() {
             <Stat
               label="Wallet (Arc)"
               value={
-                bal ? `${Number(bal.formatted).toFixed(2)} ${bal.symbol}` : "—"
+                bal ? `${Number(bal.formatted).toFixed(2)} ${bal.symbol}` : "0.00"
               }
             />
             <Stat label="Open cover" value="$0.00" />
@@ -47,7 +49,7 @@ export function PortfolioView() {
             <div className="canary-kicker" style={{ marginBottom: 12 }}>
               Positions
             </div>
-            <div style={{ fontSize: 13, color: "rgba(30,30,30,0.55)" }}>
+            <div style={{ fontSize: 13, color: "var(--c-muted)" }}>
               No open positions. Buy cover or provide liquidity to get started.
             </div>
           </div>

@@ -35,7 +35,7 @@ const mono = JetBrains_Mono({
 // No `icons` entry: `app/icon.png` is a Next.js Icon Route; declaring a
 // competing icon here would let the browser pick a stale candidate.
 export const metadata: Metadata = {
-  title: "canary — onchain depeg & exploit markets",
+  title: "canary · onchain stablecoin insurance",
   description:
     "Binary prediction markets for stablecoin depegs and protocol exploits, settled on Arc. Buy parametric cover (simple) or trade YES/NO (expert).",
 };

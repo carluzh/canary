@@ -1,9 +1,9 @@
 import Link from "next/link";
 
-const ACCENT = "#c97849";
+const ACCENT = "var(--c-kicker)";
 
-// Canary wordmark: "can" in Pixelify + "ary" in Radley, echoing the source
-// design system's split-typeface mark. The logo mask is filled canary-orange.
+// Canary wordmark: rendered in the normal sans used across the app (same as
+// the "Launch app" button). The logo mask is filled canary-orange.
 // Optional label (e.g. "Market") renders as a finer "_Label".
 export function Wordmark({
   label,
@@ -13,7 +13,7 @@ export function Wordmark({
   size?: "large" | "small";
 }) {
   const iconSize = size === "small" ? 22 : 28;
-  const fontSize = size === "small" ? 19 : 24;
+  const fontSize = size === "small" ? 16 : 20;
   return (
     <Link
       href="/"
@@ -23,7 +23,7 @@ export function Wordmark({
         alignItems: "center",
         gap: 10,
         textDecoration: "none",
-        color: "#1e1e1e",
+        color: "inherit",
       }}
     >
       <span
@@ -51,14 +51,13 @@ export function Wordmark({
           transform: "translateY(-2px)",
         }}
       >
-        <span style={{ fontFamily: "var(--font-pixelify)" }}>can</span>
-        <span style={{ fontFamily: "var(--font-radley)", fontWeight: 700 }}>
-          ary
+        <span style={{ fontFamily: "var(--sans-stack)", fontWeight: 600 }}>
+          canary
         </span>
         {label ? (
           <span
             style={{
-              fontFamily: "var(--font-radley)",
+              fontFamily: "var(--sans-stack)",
               fontWeight: 400,
               color: ACCENT,
             }}

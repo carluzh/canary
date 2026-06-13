@@ -15,7 +15,7 @@ export function MarketDetail({ id }: { id: string }) {
   if (!m) return null;
 
   return (
-    <main className="canary-shell">
+    <main className="canary-shell" data-theme={mode === "expert" ? "expert" : "simple"}>
       <header
         style={{
           display: "flex",
@@ -49,8 +49,7 @@ export function MarketDetail({ id }: { id: string }) {
           >
             {mode === "simple" ? (
               <>
-                Insure against{" "}
-                <span style={{ color: "#c97849" }}>{m.insureLabel}</span>
+                Insure your <span style={{ color: "var(--c-kicker)" }}>{m.asset}</span>
               </>
             ) : (
               m.question
@@ -71,7 +70,7 @@ export function MarketDetail({ id }: { id: string }) {
               style={{ width: `${Math.round(m.priceYes * 100)}%` }}
             />
           </div>
-          <div style={{ fontSize: 12.5, color: "rgba(30,30,30,0.55)" }}>
+          <div style={{ fontSize: 12.5, color: "var(--c-muted)" }}>
             Implied probability of the event: <strong>{pct(m.priceYes)}</strong>
           </div>
 
@@ -89,7 +88,7 @@ export function MarketDetail({ id }: { id: string }) {
               style={{
                 fontSize: 14,
                 lineHeight: 1.6,
-                color: "rgba(30,30,30,0.7)",
+                color: "var(--c-muted)",
               }}
             >
               A Chainlink price feed on Ethereum Sepolia reads {m.asset}/USD. If
@@ -108,7 +107,7 @@ export function MarketDetail({ id }: { id: string }) {
             <div className="canary-kicker" style={{ marginBottom: 8 }}>
               Your position
             </div>
-            <div style={{ fontSize: 13, color: "rgba(30,30,30,0.55)" }}>
+            <div style={{ fontSize: 13, color: "var(--c-muted)" }}>
               No position yet.
             </div>
           </div>

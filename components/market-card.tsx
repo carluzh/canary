@@ -37,7 +37,7 @@ export function MarketCard({ m }: { m: Market }) {
             }}
           >
             Insure against{" "}
-            <span style={{ color: "#c97849" }}>{m.insureLabel}</span>
+            <span style={{ color: "var(--c-kicker)" }}>{m.insureLabel}</span>
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
             <div>

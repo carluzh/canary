@@ -8,6 +8,7 @@ import {
 } from "@/lib/markets";
 import { MarketCard } from "@/components/market-card";
 import { SiteHeader } from "@/components/site-header";
+import { InsuranceBoard } from "@/components/insurance-board";
 import { useMode } from "@/lib/web3/mode";
 
 export function MarketsDashboard() {
@@ -18,7 +19,7 @@ export function MarketsDashboard() {
   );
 
   return (
-    <main className="canary-shell">
+    <main className="canary-shell" data-theme={mode === "expert" ? "expert" : "simple"}>
       <SiteHeader />
 
       <div style={{ marginBottom: 24 }}>
@@ -32,46 +33,48 @@ export function MarketsDashboard() {
           }}
         >
           {mode === "simple"
-            ? "Protect your stablecoins & DeFi positions"
-            : "Trade depeg & exploit markets"}
+            ? "Insure your stablecoins"
+            : "Trade stablecoin markets"}
         </h1>
         <p
           style={{
             marginTop: 10,
-            color: "rgba(30,30,30,0.55)",
+            color: "var(--c-muted)",
             fontSize: 15.5,
             fontFamily: "var(--font-radley)",
             maxWidth: 620,
           }}
         >
           {mode === "simple"
-            ? "Buy parametric cover that pays out on-chain the moment the event resolves on Arc."
-            : "Binary YES/NO markets settled by a Chainlink price feed over CCIP. Provide liquidity, earn the spread."}
+            ? "Pick a stablecoin and get onchain cover. Pays out automatically, settled on Arc."
+            : "Binary YES/NO markets on stablecoin pegs, settled by a Chainlink feed over CCIP. Provide liquidity, earn the spread."}
         </p>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {MARKET_CATEGORIES.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCat(c)}
-            data-active={cat === c}
-            className="canary-seg-item"
-            style={{
-              border: "1px solid rgba(30,30,30,0.14)",
-              borderRadius: 8,
-            }}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-
-      <div className="canary-grid">
-        {markets.map((m) => (
-          <MarketCard key={m.id} m={m} />
-        ))}
-      </div>
+      {mode === "simple" ? (
+        <InsuranceBoard />
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+            {MARKET_CATEGORIES.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCat(c)}
+                data-active={cat === c}
+                className="canary-seg-item"
+                style={{ border: "1px solid var(--c-border)", borderRadius: 8 }}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <div className="canary-grid">
+            {markets.map((m) => (
+              <MarketCard key={m.id} m={m} />
+            ))}
+          </div>
+        </>
+      )}
     </main>
   );
 }

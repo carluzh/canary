@@ -30,7 +30,7 @@ export function TradePanel({ m }: { m: Market }) {
           <div className="canary-kicker" style={{ marginBottom: 6 }}>
             Buy protection
           </div>
-          <div style={{ fontSize: 13, color: "rgba(30,30,30,0.6)" }}>
+          <div style={{ fontSize: 13, color: "var(--c-muted)" }}>
             Pay a premium now, get a fixed payout if{" "}
             <strong>{m.insureLabel}</strong>.
           </div>
@@ -85,7 +85,7 @@ export function TradePanel({ m }: { m: Market }) {
           <button
             className="canary-btn canary-btn--accent canary-btn--block"
             disabled
-            title="Contracts not deployed yet — wire deployments.json"
+            title="Contracts not deployed yet. Wire deployments.json"
           >
             {simple ? "Buy protection" : `Buy ${effSide.toUpperCase()}`} · awaiting
             deploy
@@ -101,7 +101,7 @@ export function TradePanel({ m }: { m: Market }) {
         style={{
           marginTop: 10,
           fontSize: 11,
-          color: "rgba(30,30,30,0.45)",
+          color: "var(--c-faint)",
           fontFamily: "var(--font-mono)",
         }}
       >
@@ -133,7 +133,7 @@ function Row({
         marginBottom: 8,
       }}
     >
-      <span style={{ color: "rgba(30,30,30,0.6)" }}>{label}</span>
+      <span style={{ color: "var(--c-muted)" }}>{label}</span>
       <span
         className="canary-mono"
         style={{ fontWeight: bold ? 600 : 400 }}
