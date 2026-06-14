@@ -1,8 +1,8 @@
 # 🐤 Canary
 
-**Parametric insurance markets for DeFi's failure modes — and the live risk curve they produce.**
+**Parametric insurance markets for DeFi's failure modes — and the live risk curve they're built to produce.**
 
-DeFi prices every asset but has no market for the price of things *going wrong*. Canary builds binary, fully-collateralized insurance markets on machine-verifiable disasters (starting with stablecoin depegs, e.g. "USDe < $0.95 for 1h"), settled automatically off Chainlink — no claims, no disputes, no humans. The prices across all markets form a live, market-implied **risk curve** for DeFi.
+DeFi prices every asset but has no market for the price of things *going wrong*. Canary builds binary, fully-collateralized insurance markets on machine-verifiable disasters (starting with stablecoin depegs, e.g. "USDe < $0.95 for 1h"), settled automatically off Chainlink — no claims, no disputes, no humans. The prices across all markets are designed to form a live, market-implied **risk curve** for DeFi.
 
 > Wall Street has the CDS curve. DeFi has vibes. We're fixing that.
 
