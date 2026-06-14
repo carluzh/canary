@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { STABLES, type Stable } from "@/lib/stables";
-import { type Market, marketTitle } from "@/lib/markets";
+import { type Market, marketTitle, isMarketActive } from "@/lib/markets";
 import { usd, timeLeft } from "@/lib/format";
+import { useLiveMarket } from "@/lib/contracts/markets-onchain";
 import { PriceChart } from "@/components/price-chart";
 import { OrderBook } from "@/components/order-book";
 
@@ -17,7 +18,17 @@ const SHARE_URL = "https://canary.example";
 
 export function MarketCard({ m }: { m: Market }) {
   const stable: Stable | undefined = STABLES.find((s) => s.symbol === m.asset);
-  const rewards = Math.max(1, Math.round(m.liquidity / 200_000));
+  const active = isMarketActive(m);
+
+  // Live reads for the active (USDe) market: liquidity = book depth in USD.
+  // View-only markets get a pure mock passthrough (liquidity = m.liquidity),
+  // so this is safe to call unconditionally and keeps the visuals identical.
+  // Keep the mock value as the deterministic first paint until the live book
+  // resolves (live + loaded + non-empty) so USDe does not hydration-mismatch.
+  const { liquidity: liveLiquidity, live, isLoading } = useLiveMarket(m);
+  const liquidity = live && !isLoading && liveLiquidity > 0 ? liveLiquidity : m.liquidity;
+
+  const rewards = Math.max(1, Math.round(liquidity / 200_000));
 
   const shareHref = `https://x.com/intent/tweet?text=${encodeURIComponent(
     `Trading the ${m.asset} depeg market on canary.`
@@ -26,6 +37,7 @@ export function MarketCard({ m }: { m: Market }) {
   return (
     <div
       className="canary-mm-card"
+      data-inactive={active ? undefined : "true"}
       style={{ ["--brand"]: stable?.color ?? "#e0b15a" } as CSSProperties}
     >
       {/* left half: identity → interactive chart → liquidity/volume */}
@@ -33,7 +45,10 @@ export function MarketCard({ m }: { m: Market }) {
         <div className="canary-mm-head">
           <TokenLogo s={stable} symbol={m.asset} />
           <div style={{ minWidth: 0 }}>
-            <div className="canary-mm-name">{marketTitle(m)}</div>
+            <div className="canary-mm-name">
+              {marketTitle(m)}
+              {!active && <span className="canary-soon">View only</span>}
+            </div>
             <div className="canary-mm-sub">
               {stable?.name ?? m.asset} · {timeLeft(m.expiry)}
             </div>
@@ -46,7 +61,7 @@ export function MarketCard({ m }: { m: Market }) {
 
         <div className="canary-mm-foot">
           <span>
-            Liquidity <strong>{usd(m.liquidity)}</strong>
+            Liquidity <strong>{usd(liquidity)}</strong>
           </span>
           <span>
             Volume <strong>{usd(m.volume)}</strong>
@@ -59,12 +74,22 @@ export function MarketCard({ m }: { m: Market }) {
         <OrderBook m={m} />
 
         <div className="canary-mm-actions">
-          <Link
-            href={`/market/${m.id}`}
-            className="canary-btn canary-btn--ink canary-mm-cta"
-          >
-            Start Trading
-          </Link>
+          {active ? (
+            <Link
+              href={`/market/${m.id}`}
+              className="canary-btn canary-btn--ink canary-mm-cta"
+            >
+              Start Trading
+            </Link>
+          ) : (
+            <div
+              className="canary-btn canary-btn--ink canary-mm-cta"
+              aria-disabled="true"
+            >
+              Start Trading
+            </div>
+          )}
+          {active ? (
           <a
             className="canary-mm-iconbtn"
             href={shareHref}
@@ -78,6 +103,19 @@ export function MarketCard({ m }: { m: Market }) {
               <path d="m16,10h2c1.1046,0,2,.8954,2,2v8c0,1.1046-.8954,2-2,2H6c-1.1046,0-2-.8954-2-2v-8c0-1.1046.8954-2,2-2h2" />
             </svg>
           </a>
+          ) : (
+            <span
+              className="canary-mm-iconbtn"
+              aria-disabled="true"
+              aria-label={`Share ${m.asset} market`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="square" strokeMiterlimit={10} strokeWidth={2} aria-hidden>
+                <polyline points="12 16 12 1.5 12 2.5" />
+                <polyline points="8 5.5 12 1.5 16 5.5" />
+                <path d="m16,10h2c1.1046,0,2,.8954,2,2v8c0,1.1046-.8954,2-2,2H6c-1.1046,0-2-.8954-2-2v-8c0-1.1046.8954-2,2-2h2" />
+              </svg>
+            </span>
+          )}
           <span className="canary-mm-iconbtn canary-promo" tabIndex={0} role="button" aria-label="Rewards">
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
               <path d="M3,9.5v4.75c0,1.517,1.233,2.75,2.75,2.75h2.5v-7.5H3Z" fill="currentColor" />

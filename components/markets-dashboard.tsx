@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MOCK_MARKETS } from "@/lib/markets";
+import { MOCK_MARKETS, isMarketActive } from "@/lib/markets";
 import { MarketCard } from "@/components/market-card";
 import { SiteHeader } from "@/components/site-header";
 import { InsuranceBoard } from "@/components/insurance-board";
@@ -24,7 +24,11 @@ export function MarketsDashboard() {
     });
   const isActive = (sym: string) => selected.size === 0 || selected.has(sym);
 
-  const markets = MOCK_MARKETS.filter((m) => isActive(m.asset));
+  // Filter by token-stack, then stable-sort so live (active) markets lead the
+  // Expert list. USDe is the only active market today, so it surfaces first.
+  const markets = MOCK_MARKETS.filter((m) => isActive(m.asset)).sort(
+    (a, b) => Number(isMarketActive(b)) - Number(isMarketActive(a)),
+  );
 
   return (
     <main

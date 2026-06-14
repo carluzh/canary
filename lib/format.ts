@@ -1,3 +1,22 @@
+import type { OrderBook } from "@/lib/contracts/canary";
+
+// Onchain 6-dec base units -> USD float. Shares and USDC are both 6-dec, so a
+// share count and a USDC amount both convert the same way.
+export function sharesToUsd(b: bigint): number {
+  return Number(b) / 1e6;
+}
+
+// PRICE_SCALE (1e6) scaled order price -> implied fraction in (0,1).
+export function priceScaleToFraction(p: bigint): number {
+  return Number(p) / 1e6;
+}
+
+// Total open-order depth across the book, in USD (sum of remaining shares).
+export function bookLiquidityUsd(book: OrderBook): number {
+  const total = book.orders.reduce((acc, o) => acc + o.remaining, 0n);
+  return Number(total) / 1e6;
+}
+
 export function usd(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`;

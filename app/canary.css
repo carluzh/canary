@@ -992,6 +992,7 @@ html {
   display: flex;
   flex-direction: column;
   min-height: 172px;
+  cursor: pointer;
   text-decoration: none;
   color: var(--c-ink);
   border: 1px solid var(--c-border);
@@ -1326,6 +1327,165 @@ html {
 }
 .canary-share:hover {
   color: var(--c-ink);
+}
+
+/* ---- simple: buy-insurance modal ---------------------------------------- */
+.canary-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 17, 20, 0.45);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.canary-modal {
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  cursor: default;
+}
+.canary-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 14px;
+}
+.canary-modal-title {
+  font-family: var(--sans-stack);
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.2;
+}
+.canary-modal-sub {
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  color: var(--c-faint);
+}
+.canary-modal-x {
+  margin-left: auto;
+  align-self: flex-start;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--c-muted);
+}
+.canary-modal-x:hover {
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+.canary-modal-gate-note {
+  margin: 0 0 12px;
+  font-family: var(--sans-stack);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--c-muted);
+}
+.canary-modal-gate-note strong {
+  color: var(--c-ink);
+  font-weight: 600;
+}
+.canary-modal-term {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  color: var(--c-muted);
+}
+.canary-modal-term-val {
+  color: var(--c-ink);
+  font-weight: 600;
+}
+.canary-modal-soon {
+  margin: 12px 0 0;
+  font-family: var(--sans-stack);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--c-faint);
+  text-align: center;
+}
+/* merge TradePanel's own panel chrome into the modal body */
+.canary-modal .canary-panel {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+/* resolution gate chart: peg line, trigger line, shaded payout zone */
+.canary-gate {
+  position: relative;
+  margin: 2px 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-surface);
+  overflow: hidden;
+}
+.canary-gate-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.canary-gate-zone {
+  fill: rgba(229, 72, 77, 0.1);
+}
+.canary-gate-peg {
+  stroke: rgba(30, 30, 30, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.canary-gate-trigger {
+  stroke: #e5484d;
+  stroke-width: 1.5;
+}
+.canary-gate-price {
+  stroke: #16a34a;
+  stroke-width: 2;
+  opacity: 0.95;
+}
+.canary-gate-tag {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  font-family: var(--sans-stack);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.canary-gate-tag--peg {
+  color: var(--c-muted);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+}
+.canary-gate-tag--trig {
+  color: #fff;
+  background: #e5484d;
 }
 
 /* ---- expert: market-maker market rows ----------------------------------- */
@@ -1825,5 +1985,426 @@ button.canary-ob-row[data-side="bid"]:hover {
 @keyframes canary-spin {
   to {
     transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* ======================================================================== */
+/* AGENT F2 — Blink deposit flow + view-only gating                         */
+/* Appended, additive only. Consumes the same --c-* tokens, --brand tint,   */
+/* --font-mono / --font-radley, and the data-theme="expert" dark palette.   */
+/* ======================================================================== */
+
+/* ---- shared spinner ---------------------------------------------------- */
+@keyframes canary-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.canary-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  animation: canary-spinner 0.7s linear infinite;
+  vertical-align: middle;
+}
+.canary-spinner--sm {
+  width: 13px;
+  height: 13px;
+  border-width: 2px;
+}
+
+/* ---- Blink deposit modal ----------------------------------------------- */
+/* full-screen scrim; sits above the z-100 noise overlay and the z-200
+   buy-insurance modal so the funding step always owns the screen */
+@keyframes canary-blink-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes canary-blink-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.canary-blink-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 12, 15, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: canary-blink-overlay-in 180ms ease both;
+}
+.canary-blink-modal {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  /* a hairline of the funded asset's brand tint reads as "branded" without
+     fighting the warm accent */
+  border: 1px solid color-mix(in srgb, var(--brand, #ee9259) 30%, var(--c-border));
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
+  cursor: default;
+  animation: canary-blink-modal-in 220ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* head: Blink lockup (left) + close (right) */
+.canary-blink-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.canary-blink-x {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--c-muted);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.canary-blink-x:hover {
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+
+/* Blink brand lockup — "Blink" prominent + a lightning glyph */
+.canary-blink-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.canary-blink-bolt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  /* lightning sits in a warm accent chip so the brand reads instantly */
+  background: linear-gradient(150deg, #ee9259, #eedbaf);
+  color: #1e1e1e;
+  box-shadow: 0 2px 10px rgba(238, 146, 89, 0.35);
+}
+.canary-blink-word {
+  font-family: var(--font-radley);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: var(--c-ink);
+}
+.canary-blink-sub {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-faint);
+  /* small separator dot before the tagline */
+  padding-left: 8px;
+  margin-left: 2px;
+  border-left: 1px solid var(--c-border);
+}
+
+/* title row: action name + asset chip */
+.canary-blink-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--sans-stack);
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.2;
+  margin-bottom: 14px;
+}
+.canary-blink-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--brand, #ee9259) 88%, var(--c-ink));
+  background: color-mix(in srgb, var(--brand, #ee9259) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand, #ee9259) 34%, transparent);
+}
+
+/* summary list */
+.canary-blink-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 16px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+}
+.canary-blink-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-family: var(--sans-stack);
+  font-size: 13px;
+  color: var(--c-muted);
+}
+.canary-blink-row + .canary-blink-row {
+  border-top: 1px solid var(--c-border);
+}
+.canary-blink-row .canary-mono {
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+}
+/* the pay row is the figure that matters — emphasised */
+.canary-blink-pay {
+  margin-top: 2px;
+  padding-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+.canary-blink-pay .canary-mono {
+  font-weight: 700;
+  font-size: 15px;
+  color: color-mix(in srgb, var(--brand, #ee9259) 80%, var(--c-ink));
+}
+
+/* 3-node progress rail: Approve → Fund → Confirmed */
+.canary-blink-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.canary-blink-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  width: 78px;
+  text-align: center;
+}
+.canary-blink-stepdot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-faint);
+  transition: background 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+.canary-blink-steplabel {
+  font-family: var(--sans-stack);
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--c-faint);
+  transition: color 200ms ease;
+}
+/* rail sits centred on the dot row (28px tall) and fills the gap between nodes */
+.canary-blink-steprail {
+  flex: 1 1 auto;
+  height: 2px;
+  margin-top: 13px;
+  border-radius: 2px;
+  background: var(--c-border);
+}
+/* pending = muted (default above) */
+.canary-blink-step[data-status="pending"] .canary-blink-stepdot {
+  opacity: 0.85;
+}
+/* active = brand-tinted ring holding a spinner */
+.canary-blink-step[data-status="active"] .canary-blink-stepdot {
+  border-color: color-mix(in srgb, var(--brand, #ee9259) 55%, transparent);
+  background: color-mix(in srgb, var(--brand, #ee9259) 12%, transparent);
+  color: var(--c-accent);
+}
+.canary-blink-step[data-status="active"] .canary-blink-steplabel {
+  color: var(--c-ink);
+  font-weight: 600;
+}
+/* done = accent fill + check */
+.canary-blink-step[data-status="done"] .canary-blink-stepdot {
+  border-color: transparent;
+  background: #ee9259;
+  color: #ffffff;
+}
+.canary-blink-step[data-status="done"] .canary-blink-steplabel {
+  color: var(--c-muted);
+}
+
+/* connect zone (wallet not connected) */
+.canary-blink-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.canary-blink-connect-note {
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  color: var(--c-muted);
+  text-align: center;
+}
+
+/* terminal blocks: success / error */
+.canary-blink-doneblock {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+.canary-blink-success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--sans-stack);
+  font-weight: 600;
+  font-size: 14px;
+  color: #16a34a;
+}
+.canary-blink-link {
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--brand, #ee9259) 78%, var(--c-ink));
+  transition: filter 140ms ease;
+}
+.canary-blink-link:hover {
+  filter: brightness(1.12);
+  text-decoration: underline;
+}
+.canary-blink-err {
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #e5484d;
+  background: color-mix(in srgb, #fb5a6a 12%, transparent);
+  border: 1px solid color-mix(in srgb, #fb5a6a 40%, transparent);
+  word-break: break-word;
+}
+
+/* confirm CTA + the disabled reason shown beneath it */
+.canary-blink-confirm {
+  margin-top: 2px;
+}
+.canary-blink-reason {
+  margin-top: 10px;
+  font-family: var(--sans-stack);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--c-muted);
+}
+
+/* footer reassurance line */
+.canary-blink-foot {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--c-border);
+  font-family: var(--sans-stack);
+  font-size: 11.5px;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--c-faint);
+}
+
+/* ---- view-only / inactive market gating -------------------------------- */
+/* small "View only" pill — subtle, top-right friendly */
+.canary-soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--c-muted);
+  background: color-mix(in srgb, var(--c-ink) 5%, transparent);
+  border: 1px solid var(--c-border);
+}
+
+/* an inactive card reads as "not yet live": dimmed + desaturated, CTAs inert */
+[data-inactive="true"] {
+  opacity: 0.62;
+  filter: saturate(0.7);
+  transition: opacity 180ms ease, filter 180ms ease;
+}
+[data-inactive="true"]:hover {
+  /* suppress the lift/border affordances inherited from card hovers */
+  transform: none;
+}
+[data-inactive="true"] .canary-cover-row,
+[data-inactive="true"] .canary-mm-cta {
+  pointer-events: none;
+  cursor: default;
+}
+[data-inactive="true"] [aria-disabled="true"],
+[data-inactive="true"].canary-mm-cta[aria-disabled="true"] {
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* ---- reduced motion ---------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .canary-spinner,
+  .canary-spinner--sm {
+    animation-duration: 1.4s;
+  }
+  .canary-blink-overlay,
+  .canary-blink-modal {
+    animation: none;
+  }
+  .canary-blink-stepdot,
+  .canary-blink-steplabel {
+    transition: none;
   }
 }

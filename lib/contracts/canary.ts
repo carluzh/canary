@@ -117,3 +117,8 @@ export function redeem(market: `0x${string}`): Call {
 export function settleDepeg(market: `0x${string}`, startRoundId: bigint): Call {
   return { address: market, abi: CANARY_MARKET_ABI, functionName: "settleDepeg", args: [startRoundId] };
 }
+
+/** Permissionless settlement after expiry with no depeg — flips NO to pay $1. */
+export function settleExpiry(market: `0x${string}`): Call {
+  return { address: market, abi: CANARY_MARKET_ABI, functionName: "settleExpiry", args: [] };
+}

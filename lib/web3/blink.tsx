@@ -149,7 +149,10 @@ type Executor = {
   plan: DepositPlan;
   owner: Address;
   publicClient: NonNullable<ReturnType<typeof usePublicClient>>;
-  writeContractAsync: ReturnType<typeof useWriteContract>["writeContractAsync"];
+  // Permissive signature: runtime-built calls (dynamic abi/functionName) and
+  // arcTestnet.id (typed `number` by defineChain, not the wagmi literal union)
+  // don't fit wagmi's deep generics. The ABI/args/chain are validated on-chain.
+  writeContractAsync: (args: any) => Promise<`0x${string}`>;
   onPhase: (patch: Partial<DepositState>) => void;
 };
 

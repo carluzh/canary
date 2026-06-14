@@ -1,7 +1,9 @@
 "use client";
 
 import type { Market } from "@/lib/markets";
-import { usd } from "@/lib/format";
+import { isMarketActive } from "@/lib/markets";
+import { usd, priceScaleToFraction, sharesToUsd } from "@/lib/format";
+import { useLiveMarket } from "@/lib/contracts/markets-onchain";
 
 // Shared limit-order book: a static display on the Expert card, and clickable on
 // the market detail page where picking a level fills a Buy YES / Buy NO intent.
@@ -53,6 +55,38 @@ export function buildBook(symbol: string, mid: number) {
   return { asks, bids, spread: bestAsk - bestBid, maxSize };
 }
 
+// Derive display rows from the live on-chain YES book. Asks = sell-YES offers
+// (cover supply), bids = buy-YES orders. Tolerates a one-sided book: the live
+// demo carries a single ask and no bids, so every spread/best calc is guarded.
+function liveBook(
+  book: { ids: bigint[]; orders: OnchainOrderLike[] }
+): { asks: Order[]; bids: Order[]; spread: number; maxSize: number } {
+  const asks: Order[] = [];
+  const bids: Order[] = [];
+  for (const o of book.orders) {
+    if (!o.isYes || o.remaining <= 0n) continue;
+    const row = { price: priceScaleToFraction(o.price), size: sharesToUsd(o.remaining) };
+    if (!o.isBuy) asks.push(row);
+    else bids.push(row);
+  }
+  // top → bottom: highest ask down to the best (lowest) ask, matching synthetic layout.
+  asks.sort((x, y) => y.price - x.price);
+  bids.sort((x, y) => y.price - x.price);
+  const bestAsk = asks.length ? asks[asks.length - 1]!.price : null;
+  const bestBid = bids.length ? bids[0]!.price : null;
+  const spread = bestAsk != null && bestBid != null ? bestAsk - bestBid : 0;
+  const sizes = [...asks, ...bids].map((o) => o.size);
+  const maxSize = sizes.length ? Math.max(...sizes) : 1;
+  return { asks, bids, spread, maxSize };
+}
+
+type OnchainOrderLike = {
+  isYes: boolean;
+  isBuy: boolean;
+  price: bigint;
+  remaining: bigint;
+};
+
 export function OrderBook({
   m,
   onPick,
@@ -60,7 +94,15 @@ export function OrderBook({
   m: Market;
   onPick?: (p: OrderPick) => void;
 }) {
-  const { asks, bids, spread, maxSize } = buildBook(m.asset, m.priceYes);
+  const { book, price, live } = useLiveMarket(m);
+  const useLive = isMarketActive(m) && live && book.orders.length > 0;
+  const synthetic = buildBook(m.asset, m.priceYes);
+  const derived = useLive ? liveBook(book) : synthetic;
+  const { asks, bids, spread, maxSize } = derived;
+  // Synthetic levels are not fillable, so only the live book gets a click handler.
+  const pick = useLive ? onPick : undefined;
+  // Mid = live market price when live, mock priceYes otherwise (deterministic SSR paint).
+  const mid = subCents(useLive ? price : m.priceYes);
   return (
     <div className="canary-ob">
       <div className="canary-ob-head">
@@ -69,14 +111,14 @@ export function OrderBook({
       </div>
       <div className="canary-ob-rows">
         {asks.map((o, i) => (
-          <ObRow key={`a${i}`} side="ask" o={o} maxSize={maxSize} onPick={onPick} />
+          <ObRow key={`a${i}`} side="ask" o={o} maxSize={maxSize} onPick={pick} />
         ))}
         <div className="canary-ob-mid">
-          <span className="canary-ob-mid-price">{subCents(m.priceYes)}</span>
+          <span className="canary-ob-mid-price">{mid}</span>
           <span className="canary-ob-mid-sub">Mid price</span>
         </div>
         {bids.map((o, i) => (
-          <ObRow key={`b${i}`} side="bid" o={o} maxSize={maxSize} onPick={onPick} />
+          <ObRow key={`b${i}`} side="bid" o={o} maxSize={maxSize} onPick={pick} />
         ))}
       </div>
     </div>

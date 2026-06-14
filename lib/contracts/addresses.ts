@@ -14,6 +14,13 @@ export const MARKET_FACTORY_ADDRESS = deployments.factory as `0x${string}`;
 export const DEMO_MARKET_ADDRESS = deployments.demoMarket as `0x${string}`;
 export const DEMO_FEED_ADDRESS = deployments.demoFeed as `0x${string}`;
 
+// Yield/underwrite deployment — the only market where yield view fns
+// (totalCollateralValue, yieldStrategy, claimableYield, pendingYield) are safe
+// to call; they revert on the demo market. Used as the underwrite target.
+export const YIELD_MARKET_ADDRESS = deployments.yieldMarket as `0x${string}`;
+export const YIELD_VAULT_ADDRESS = deployments.yieldVault as `0x${string}`;
+export const YIELD_FACTORY_ADDRESS = deployments.yieldFactory as `0x${string}`;
+
 // Optional CCIP-relayed "live Chainlink data" market (zero address if not deployed).
 const ZERO = "0x0000000000000000000000000000000000000000";
 export const RELAYED_FEED_ADDRESS =
