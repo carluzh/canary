@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { useMode } from "@/lib/web3/mode";
 import { type Market } from "@/lib/markets";
@@ -12,6 +12,13 @@ export function TradePanel({ m }: { m: Market }) {
   const { isConnected } = useAccount();
   const [side, setSide] = useState<"yes" | "no">("yes");
   const [amount, setAmount] = useState("");
+
+  // Prefill the cover amount when arriving from a card's "Cover $X" option
+  // (e.g. /market/usdt?cover=1000).
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get("cover");
+    if (c && /^\d+(\.\d+)?$/.test(c)) setAmount(c);
+  }, []);
 
   const simple = mode === "simple";
   const n = parseFloat(amount) || 0;

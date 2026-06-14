@@ -24,5 +24,3 @@ export const arcTestnet = defineChain({
 // Ethereum Sepolia hosts the Chainlink price read + CCIP send that settles the
 // Arc market (see build-plan.md §2). Wallet can switch here for the resolver UX.
 export { sepolia };
-
-export const SUPPORTED_CHAINS = [arcTestnet, sepolia] as const;

@@ -8,7 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { isMuted, playDrop, playPickup, toggleMuted } from "@/lib/sounds";
+import { playDrop, playPickup } from "@/lib/sounds";
 
 export function Draggable({
   children,
@@ -76,42 +76,5 @@ export function Draggable({
     >
       {children}
     </div>
-  );
-}
-
-export function MuteToggle() {
-  const [muted, setMutedState] = useState(false);
-
-  const handleClick = useCallback(() => {
-    setMutedState(toggleMuted());
-  }, []);
-
-  // Keep local state aligned with module state on first paint.
-  const current = typeof window !== "undefined" ? isMuted() : muted;
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      aria-label={current ? "Unmute sounds" : "Mute sounds"}
-      aria-pressed={current}
-      title={current ? "Unmute sounds" : "Mute sounds"}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "2rem",
-        height: "2rem",
-        padding: 0,
-        border: "1px solid currentColor",
-        background: "transparent",
-        color: "inherit",
-        cursor: "pointer",
-        lineHeight: 1,
-        fontSize: "1rem",
-      }}
-    >
-      <span aria-hidden="true">{current ? "\u{1F507}" : "\u{1F50A}"}</span>
-    </button>
   );
 }

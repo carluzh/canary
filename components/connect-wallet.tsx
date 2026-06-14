@@ -42,11 +42,14 @@ export function ConnectWallet() {
         </button>
       )}
       <button
-        className="canary-btn canary-btn--ghost"
+        className="canary-btn canary-btn--account"
         onClick={() => disconnect()}
-        title="Disconnect"
+        title="Sign out"
       >
-        {shortAddr(address)}
+        <span className="canary-account-label">
+          <span className="canary-account-addr">{shortAddr(address)}</span>
+          <span className="canary-account-signout">Sign out</span>
+        </span>
       </button>
     </div>
   );

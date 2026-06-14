@@ -11,10 +11,8 @@ import { STABLES } from "@/lib/stables";
 import { usd } from "@/lib/format";
 import { useMode } from "@/lib/web3/mode";
 
-// One uniform floating sticker. Every sticker shares the exact same shell
-// (.canary-sticker-card / row / bar / fill); only color, logo, label, optional
-// right-aligned meta, and the bar fill width differ. Tinted via --brand.
-// Stickers share one shell but render in three shapes:
+// One uniform floating sticker shell (.canary-sticker-card / row / bar / fill),
+// tinted via --brand, rendered in three shapes:
 //  available -> "$X available" + bottom bar (only these get a bar)
 //  apy       -> logo + symbol + a prominent APY, no bar
 //  plain     -> logo + label (Arc / Chainlink), no bar
@@ -113,6 +111,7 @@ export function MarketingPage() {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
+          minHeight: 38,
           flexWrap: "wrap",
         }}
       >
