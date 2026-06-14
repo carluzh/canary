@@ -1,48 +1,56 @@
-# Canary Watchtower — Chainlink CRE workflow
+# Canary Watchtower — Chainlink CRE workflow ✅ working
 
-A [Chainlink Runtime Environment](https://docs.chain.link/cre) workflow that autonomously watches the USDe price on a cron schedule (DON consensus) and, on a provable depeg, fires settlement itself — no keeper, no human. It completes the Chainlink stack to **three products used non-trivially**: Data Feeds (round-history settlement proof) + CCIP (cross-chain feed relay) + **CRE** (autonomous monitor → settle).
+A [Chainlink Runtime Environment](https://docs.chain.link/cre) workflow that autonomously watches the USDe price on a cron schedule (DON consensus) and, on a provable depeg, **fires settlement itself** — no keeper, no human. Completes the Chainlink stack to three products used non-trivially: **Data Feeds** (round-history settlement proof) + **CCIP** (cross-chain feed relay) + **CRE** (autonomous monitor → settle).
 
 ```
-cron → CRE reads USDe feed (DON consensus) → depeg? → DON-signed report
+cron → CRE reads USDe feed on Arc (DON consensus) → depeg? → DON-signed report
      → Keystone Forwarder → CanaryReportReceiver.onReport → market.settleDepeg
 ```
 
-## Good news from the research: Arc is fully supported
+## Proven live on Arc
 
-- **Arc is a first-class CRE read+write target** — `chainSelectorName: "arc-testnet"` (chainId 5042002, selector 3034092155422581607), in the `chain-selectors` catalog.
-- **Keystone Forwarder on Arc:** production `0x76c9cf548b4179F8901cda1f8623568b58215E62`; simulation `0x6E9EE680ef59ef64Aa8C7371279c27E496b5eDc1` (for `cre workflow simulate --broadcast`).
-- Requirements: CRE CLI ≥ v1.0.7, TS SDK ≥ v1.3.1 (we use v1.11).
+Ran end-to-end in `cre workflow simulate --broadcast` against Arc testnet:
+- **Read:** `USDe/USD round 1 = 100000000 (threshold 95000000) -> peg ok` (live Arc feed read, DON consensus).
+- **Settle:** crashed the feed to `$0.85` → workflow logged `DEPEG`, returned `{ breached: true, settled: true }`, and the target market flipped to **TriggeredYes** — autonomously, on-chain.
 
-## Deployed (Arc testnet)
+`main.ts` uses the verified `cre-sdk` v1.11 API; `CanaryReportReceiver` is deployed + tested on Arc (`contracts/src/cre/CanaryReportReceiver.sol`, 4 tests).
 
-- **CanaryReportReceiver:** `0x17a6aC04372a6A0be1d99D7962bA837C217bca8f` — verifies the Forwarder and relays the report into `settleDepeg`. Wired to the **simulation** Forwarder + the demo market `0x054D…3b3F` (for the local-sim demo; for a real DON deploy, redeploy it pointing at the production Forwarder). Contract + tests: `contracts/src/cre/CanaryReportReceiver.sol`, 4 tests passing.
-
-## Setup (your machine — verified June 2026)
+## Reproduce it (verified commands)
 
 ```bash
-curl -sSL https://app.chain.link/cre/install.sh | bash    # installs CRE CLI (v1.18) to ~/.cre
-xattr -c $HOME/.cre/cre                                   # macOS only, if Gatekeeper blocks
-cre version && cre login                                  # auth
-curl -fsSL https://bun.sh/install | bash                  # bun (TS runtime)
-cre init                                                  # name it, choose TypeScript
-# copy cre/workflow.ts + cre/config.json into the project, then:
-bun add @chainlink/cre-sdk zod viem
+# tooling
+curl -fsSL https://bun.sh/install | bash
+curl -sSL https://app.chain.link/cre/install.sh | bash    # CRE CLI
+xattr -c $HOME/.cre/bin/cre                                # macOS only
+cre login
+
+# scaffold + wire our workflow in
+cre init --template hello-world-ts --project-name canary-cre --workflow-name watchtower
+cp cre/main.ts canary-cre/watchtower/main.ts
+cp cre/config.json canary-cre/watchtower/config.staging.json
+cd canary-cre/watchtower && bun install && bun add viem && cd ..
 ```
 
-## Run it (local simulation = the demo path)
+Then:
+- **project.yaml** — add Arc to `staging-settings.rpcs`:
+  ```yaml
+  - chain-name: arc-testnet
+    url: ${ARC_RPC_URL}      # export ARC_RPC_URL=<your Arc RPC>
+  ```
+- **.env** — set `CRE_ETH_PRIVATE_KEY=<funded Arc key>` (for `--broadcast` writes).
 
+Run:
 ```bash
-cre workflow simulate --target local-simulation --config config.json workflow.ts
-# add --broadcast to actually send the settlement report on a funded wallet
+# read-only (logs peg ok / DEPEG)
+cre workflow simulate watchtower -T staging-settings --non-interactive --trigger-index 0
+# full autonomous settlement (crash the feed first, then):
+cre workflow simulate watchtower -T staging-settings --non-interactive --trigger-index 0 --broadcast
 ```
 
-This reads the live Arc demo feed every minute and logs `peg ok` / `DEPEG`. Crash the demo feed (`MockV3Aggregator.updateAnswer(85000000)`) and the workflow reports the breach → the receiver fires `settleDepeg`. Local simulation makes **real onchain reads** and (with `--broadcast`) **real writes** — no DON needed.
+## Config (`config.json` → `config.staging.json`)
 
-## Demo path vs DON deploy
+Points at the Arc demo feed + the deployed `CanaryReportReceiver`. The receiver is wired to the **simulation** Keystone Forwarder (`0x6E9E…5Edc1`) for `--broadcast`; for a real DON deploy, redeploy it against the **production** Forwarder (`0x76c9…5E62`).
 
-- **Local simulation is the realistic hackathon surface** (and what judging usually wants): real chain calls, no gating.
-- **DON deployment is gated** — it needs Early Access (`cre account access`) and registers the workflow on a Workflow Registry (Sepolia testnet tx). Not guaranteed self-serve in a weekend, so we demo on local simulation.
+## Demo path
 
-## Validate in your env
-
-`workflow.ts` uses the verified `cre-sdk` v1.11 API (Runner/handler/CronCapability/EVMClient). The one thing to confirm in `cre workflow simulate` is the exact `prepareReportRequest` → `writeReport` report encoding (it can be version-specific); the receiver expects `abi.encode(uint80 roundId)`.
+**Local simulation is the surface** (real Arc reads/writes, no gating) — that's what we demo. DON deployment is Early-Access-gated (`cre account access`) and registers on a Sepolia Workflow Registry; not needed for judging.
