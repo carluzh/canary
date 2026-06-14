@@ -25,16 +25,3 @@ html, body {
 }
 
 button { cursor: pointer; }
-
-/* Asymmetric rotateX/rotateY widens the swing of the outer stars so a
-   wide horizontal glyph reads with depth. */
-@keyframes starsSway {
-  0%, 100% { transform: perspective(800px) rotateX(0deg) rotateY(-8deg); }
-  50%      { transform: perspective(800px) rotateX(4deg) rotateY(8deg); }
-}
-.stars-sway {
-  display: inline-block;
-  animation: starsSway 9s ease-in-out infinite;
-  transform-style: preserve-3d;
-  will-change: transform;
-}

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import type { CSSProperties } from "react";
+import { useMemo, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type { Stable } from "@/lib/stables";
 import { usd } from "@/lib/format";
 
@@ -31,7 +31,12 @@ function hashSeed(str: string): number {
   }
   return h >>> 0;
 }
-function sparkPoints(symbol: string): string {
+
+// YES-share price history (0..1 premium), a deterministic random walk that ends
+// exactly at the current premium so the last point matches the displayed cents
+// and every hovered point reads as a plausible past quote.
+const SPARK_N = 28;
+function sparkSeries(symbol: string, current: number): number[] {
   let a = hashSeed(symbol) >>> 0;
   const rng = () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -39,35 +44,42 @@ function sparkPoints(symbol: string): string {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const N = 28;
-  const vals: number[] = [];
-  let v = 0.5;
-  for (let i = 0; i < N; i++) {
-    v += (rng() - 0.5) * 0.34;
-    v = Math.max(0.06, Math.min(0.94, v));
-    vals.push(v);
+  // Walk backwards from the current premium, then reverse so it lands on it.
+  const back: number[] = [];
+  let v = current;
+  for (let i = 0; i < SPARK_N; i++) {
+    back.push(v);
+    v *= 1 + (rng() - 0.5) * 0.28;
+    v = Math.max(current * 0.4, Math.min(current * 2.2, v));
   }
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const range = max - min || 1;
-  return vals
-    .map((val, i) => {
-      const x = (i / (N - 1)) * 100;
-      const y = 26 - ((val - min) / range) * 24 - 1;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+  return back.reverse();
 }
 
 export function StableCard({ s }: { s: Stable }) {
   const sym = s.symbol.toLowerCase();
-  const yesPrice = s.coverCost; // YES share price == market-implied depeg odds
-  const yesCents = `${(yesPrice * 100).toFixed(1)}¢`;
   const volume = Math.round(s.capacityUsed * 0.42);
+
+  // YES-share price line. Hovering it surfaces the point under the cursor in the
+  // price field; with no hover we show the current (last) value == cover cost.
+  const series = useMemo(
+    () => sparkSeries(s.symbol, s.coverCost),
+    [s.symbol, s.coverCost]
+  );
+  const [hoverVal, setHoverVal] = useState<number | null>(null);
+  const shown = hoverVal ?? series[series.length - 1];
+  const yesCents = `${(shown * 100).toFixed(1)}¢`;
 
   const band =
     s.coverCost <= 0.02 ? "cheap" : s.coverCost <= 0.035 ? "fair" : "pricey";
-  const verdict = band === "cheap" ? "Cheap" : band === "fair" ? "Fair" : "Pricey";
+  const verdict =
+    band === "cheap" ? "Cheap" : band === "fair" ? "Fair" : "Expensive";
+  // Tooltip copy speaks to what the price means for the buyer, per band.
+  const verdictTip =
+    band === "cheap"
+      ? `The market sees a low chance of ${s.symbol} depegging, so cover is inexpensive.`
+      : band === "fair"
+      ? `Premium is in line with the market's implied depeg risk for ${s.symbol}.`
+      : `The market is pricing in elevated depeg risk for ${s.symbol}, so cover costs more.`;
 
   const shareHref = `https://x.com/intent/tweet?text=${encodeURIComponent(
     `Insure your ${s.symbol} against a depeg on canary.`
@@ -86,39 +98,28 @@ export function StableCard({ s }: { s: Stable }) {
             <span className="canary-stable-ticker">{s.symbol}</span>
           </span>
         </span>
-        <span className="canary-verdict" tabIndex={0}>
+        <span
+          className="canary-verdict"
+          tabIndex={0}
+          onClick={(e) => e.preventDefault()}
+        >
           <span className="canary-verdict-dot" data-band={band} aria-hidden />
           <span className="canary-verdict-word">{verdict}</span>
           <span className="canary-verdict-tip" role="tooltip">
-            How cheap the cover is, priced from the market&apos;s implied
-            premium. Cheap is under 2%, Fair 2 to 3.5%, Pricey over 3.5%.
+            {verdictTip}
           </span>
         </span>
       </Link>
 
       <div className="canary-card-body">
-        {/* clean market: YES share price as a line graph */}
+        {/* clean market: YES share price as a line graph, hover to inspect */}
         <div className="canary-yes">
           <div className="canary-yes-top">
-            <span className="canary-yes-label">YES shares</span>
-            <span className="canary-yes-price">{yesCents}</span>
+            <span className="canary-yes-price" data-hover={hoverVal != null}>
+              {yesCents}
+            </span>
           </div>
-          <svg
-            className="canary-yes-spark"
-            viewBox="0 0 100 26"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <polyline
-              points={sparkPoints(s.symbol)}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
+          <Sparkline series={series} onHover={setHoverVal} />
         </div>
 
         {/* single cover quote -> deep-links with the amount prefilled */}
@@ -155,6 +156,88 @@ export function StableCard({ s }: { s: Stable }) {
           </a>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Interactive price line: a vertical guide + dot follow the cursor, and the
+// hovered value is lifted to the parent so the price field reflects it.
+function Sparkline({
+  series,
+  onHover,
+}: {
+  series: number[];
+  onHover: (v: number | null) => void;
+}) {
+  const [idx, setIdx] = useState<number | null>(null);
+  const N = series.length;
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const range = max - min || 1;
+  const px = (i: number) => (i / (N - 1)) * 100; // 0..100, also % of width
+  const py = (v: number) => 26 - ((v - min) / range) * 24 - 1; // viewBox units
+
+  const move = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const frac = (e.clientX - rect.left) / rect.width;
+    const i = Math.max(0, Math.min(N - 1, Math.round(frac * (N - 1))));
+    setIdx(i);
+    onHover(series[i]!);
+  };
+  const leave = () => {
+    setIdx(null);
+    onHover(null);
+  };
+
+  const points = series
+    .map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`)
+    .join(" ");
+
+  return (
+    <div
+      className="canary-spark-wrap"
+      onPointerMove={move}
+      onPointerLeave={leave}
+    >
+      <svg
+        className="canary-yes-spark"
+        viewBox="0 0 100 26"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <polyline
+          points={points}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        {idx != null && (
+          <line
+            x1={px(idx)}
+            y1={0}
+            x2={px(idx)}
+            y2={26}
+            stroke="currentColor"
+            strokeWidth={1}
+            strokeDasharray="2 2"
+            opacity={0.45}
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+      </svg>
+      {idx != null && (
+        <span
+          className="canary-spark-dot"
+          style={{
+            left: `${px(idx)}%`,
+            top: `${(py(series[idx]!) / 26) * 100}%`,
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,107 +1,139 @@
 "use client";
 
 import Link from "next/link";
-import { useMode } from "@/lib/web3/mode";
-import { type Market, premiumPct, payoutMultiple } from "@/lib/markets";
-import { usd, pct, cents, timeLeft } from "@/lib/format";
+import { useState, type CSSProperties } from "react";
+import { STABLES, type Stable } from "@/lib/stables";
+import { type Market, marketTitle } from "@/lib/markets";
+import { usd, timeLeft } from "@/lib/format";
+import { PriceChart } from "@/components/price-chart";
+import { OrderBook } from "@/components/order-book";
+
+// Expert surface: a market-maker's market row. Same family as the Simple
+// StableCard (crisp header coin, sans type, muted Liquidity/Volume footer), with
+// an interactive chart on the left and a limit-order book over a Start-Trading /
+// share / promotions action row on the right.
+
+const SHARE_URL = "https://canary.example";
 
 export function MarketCard({ m }: { m: Market }) {
-  const { mode } = useMode();
-  const yesPct = Math.round(m.priceYes * 100);
+  const stable: Stable | undefined = STABLES.find((s) => s.symbol === m.asset);
+  const rewards = Math.max(1, Math.round(m.liquidity / 200_000));
+
+  const shareHref = `https://x.com/intent/tweet?text=${encodeURIComponent(
+    `Trading the ${m.asset} depeg market on canary.`
+  )}&url=${encodeURIComponent(SHARE_URL)}`;
 
   return (
-    <Link href={`/market/${m.id}`} className="canary-card">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          marginBottom: 12,
-        }}
-      >
-        <span className="canary-kicker">
-          {m.category} · {m.asset}
-        </span>
-        <span className="canary-tag">{timeLeft(m.expiry)}</span>
+    <div
+      className="canary-mm-card"
+      style={{ ["--brand"]: stable?.color ?? "#e0b15a" } as CSSProperties}
+    >
+      {/* left half: identity → interactive chart → liquidity/volume */}
+      <div className="canary-mm-main">
+        <div className="canary-mm-head">
+          <TokenLogo s={stable} symbol={m.asset} />
+          <div style={{ minWidth: 0 }}>
+            <div className="canary-mm-name">{marketTitle(m)}</div>
+            <div className="canary-mm-sub">
+              {stable?.name ?? m.asset} · {timeLeft(m.expiry)}
+            </div>
+          </div>
+        </div>
+
+        <div className="canary-mm-chart">
+          <PriceChart symbol={m.asset} />
+        </div>
+
+        <div className="canary-mm-foot">
+          <span>
+            Liquidity <strong>{usd(m.liquidity)}</strong>
+          </span>
+          <span>
+            Volume <strong>{usd(m.volume)}</strong>
+          </span>
+        </div>
       </div>
 
-      {mode === "simple" ? (
-        <>
-          <div
-            style={{
-              fontFamily: "var(--font-radley)",
-              fontSize: 19,
-              lineHeight: 1.25,
-              marginBottom: 16,
-              minHeight: 48,
-            }}
+      {/* right half: compact order book + actions */}
+      <div className="canary-ob-col">
+        <OrderBook m={m} />
+
+        <div className="canary-mm-actions">
+          <Link
+            href={`/market/${m.id}`}
+            className="canary-btn canary-btn--ink canary-mm-cta"
           >
-            Insure against{" "}
-            <span style={{ color: "var(--c-kicker)" }}>{m.insureLabel}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
-            <div>
-              <div className="canary-stat-label">Cost of cover</div>
-              <div className="canary-stat-value">{pct(premiumPct(m))}</div>
-            </div>
-            <div>
-              <div className="canary-stat-label">Payout</div>
-              <div className="canary-stat-value">
-                {payoutMultiple(m).toFixed(0)}×
-              </div>
-            </div>
-            <span
-              className="canary-btn canary-btn--accent"
-              style={{ marginLeft: "auto" }}
-            >
-              Buy protection →
-            </span>
-          </div>
-        </>
-      ) : (
-        <>
-          <div
-            style={{ fontSize: 15, lineHeight: 1.35, marginBottom: 16, minHeight: 48 }}
+            Start Trading
+          </Link>
+          <a
+            className="canary-mm-iconbtn"
+            href={shareHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Share ${m.asset} market`}
           >
-            {m.question}
-          </div>
-          <div className="canary-bar" style={{ marginBottom: 8 }}>
-            <div className="canary-bar-yes" style={{ width: `${yesPct}%` }} />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 12.5,
-              marginBottom: 16,
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            <span style={{ color: "#5a7a3a" }}>YES {cents(m.priceYes)}</span>
-            <span style={{ color: "#aa5f6e" }}>NO {cents(1 - m.priceYes)}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
-            <div>
-              <div className="canary-stat-label">Liquidity</div>
-              <div className="canary-mono" style={{ fontSize: 13 }}>
-                {usd(m.liquidity)}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="square" strokeMiterlimit={10} strokeWidth={2} aria-hidden>
+              <polyline points="12 16 12 1.5 12 2.5" />
+              <polyline points="8 5.5 12 1.5 16 5.5" />
+              <path d="m16,10h2c1.1046,0,2,.8954,2,2v8c0,1.1046-.8954,2-2,2H6c-1.1046,0-2-.8954-2-2v-8c0-1.1046.8954-2,2-2h2" />
+            </svg>
+          </a>
+          <span className="canary-mm-iconbtn canary-promo" tabIndex={0} role="button" aria-label="Rewards">
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+              <path d="M3,9.5v4.75c0,1.517,1.233,2.75,2.75,2.75h2.5v-7.5H3Z" fill="currentColor" />
+              <path d="M9.75,9.5v7.5h2.5c1.517,0,2.75-1.233,2.75-2.75v-4.75h-5.25Z" fill="currentColor" />
+              <path d="M15.25,4.5h-.462c.135-.307,.212-.644,.212-1,0-1.378-1.121-2.5-2.5-2.5-1.761,0-2.864,1.231-3.5,2.339-.636-1.107-1.739-2.339-3.5-2.339-1.379,0-2.5,1.122-2.5,2.5,0,.356,.077,.693,.212,1h-.462c-.965,0-1.75,.776-1.75,1.75s.785,1.75,1.75,1.75H15.25c.965,0,1.75-.782,1.75-1.75s-.785-1.75-1.75-1.75Zm-2.75-2c.552,0,1,.449,1,1s-.448,1-1,1h-2.419c.405-.86,1.176-2,2.419-2ZM4.5,3.5c0-.551,.448-1,1-1,1.234,0,2.007,1.14,2.415,2h-2.415c-.552,0-1-.449-1-1Z" fill="currentColor" />
+            </svg>
+            <div className="canary-promo-tip" role="tooltip">
+              <p className="canary-promo-tip-lead">
+                Earn rewards by placing limit orders near the mid.
+              </p>
+              <div className="canary-promo-rows">
+                <div>
+                  <span>Rewards</span>
+                  <span className="canary-promo-val">
+                    <i className="canary-coin">$</i> {rewards}
+                  </span>
+                </div>
+                <div>
+                  <span>Max spread</span>
+                  <span className="canary-promo-fig">±4¢</span>
+                </div>
+                <div>
+                  <span>Min shares</span>
+                  <span className="canary-promo-fig">50</span>
+                </div>
               </div>
+              <div className="canary-promo-div" />
+              <p className="canary-promo-tip-lead">
+                Attract more liquidity by sponsoring rewards for this market.
+              </p>
+              <div className="canary-promo-add">Add rewards</div>
             </div>
-            <div>
-              <div className="canary-stat-label">Volume</div>
-              <div className="canary-mono" style={{ fontSize: 13 }}>
-                {usd(m.volume)}
-              </div>
-            </div>
-            <span
-              className="canary-btn canary-btn--ink"
-              style={{ marginLeft: "auto" }}
-            >
-              Trade →
-            </span>
-          </div>
-        </>
-      )}
-    </Link>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Same crisp header coin as Simple's StableCard (circular logo + initial fallback).
+function TokenLogo({ s, symbol }: { s: Stable | undefined; symbol: string }) {
+  const [err, setErr] = useState(false);
+  if (s?.logo && !err) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={s.logo}
+        alt={symbol}
+        className="canary-stable-logo"
+        onError={() => setErr(true)}
+      />
+    );
+  }
+  return (
+    <span className="canary-stable-fallback" style={{ background: s?.color ?? "#e0b15a" }}>
+      {symbol.slice(0, 1)}
+    </span>
   );
 }

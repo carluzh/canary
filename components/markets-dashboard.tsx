@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  MOCK_MARKETS,
-  MARKET_CATEGORIES,
-  type MarketCategory,
-} from "@/lib/markets";
+import { MOCK_MARKETS } from "@/lib/markets";
 import { MarketCard } from "@/components/market-card";
 import { SiteHeader } from "@/components/site-header";
 import { InsuranceBoard } from "@/components/insurance-board";
@@ -15,7 +11,6 @@ import { useMode } from "@/lib/web3/mode";
 
 export function MarketsDashboard() {
   const { mode } = useMode();
-  const [cat, setCat] = useState<MarketCategory>("All");
 
   // Token-stack filter: empty set == show everything. Clicking a token toggles
   // its membership; isActive folds the "empty means all" rule.
@@ -29,9 +24,7 @@ export function MarketsDashboard() {
     });
   const isActive = (sym: string) => selected.size === 0 || selected.has(sym);
 
-  const markets = MOCK_MARKETS.filter(
-    (m) => (cat === "All" || m.category === cat) && isActive(m.asset)
-  );
+  const markets = MOCK_MARKETS.filter((m) => isActive(m.asset));
 
   return (
     <main
@@ -96,26 +89,11 @@ export function MarketsDashboard() {
       {mode === "simple" ? (
         <InsuranceBoard selected={selected} />
       ) : (
-        <>
-          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-            {MARKET_CATEGORIES.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCat(c)}
-                data-active={cat === c}
-                className="canary-seg-item"
-                style={{ border: "1px solid var(--c-border)", borderRadius: 8 }}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-          <div className="canary-grid">
-            {markets.map((m) => (
-              <MarketCard key={m.id} m={m} />
-            ))}
-          </div>
-        </>
+        <div className="canary-mm-list">
+          {markets.map((m) => (
+            <MarketCard key={m.id} m={m} />
+          ))}
+        </div>
       )}
 
       <SiteFooter />

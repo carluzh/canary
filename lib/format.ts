@@ -20,3 +20,9 @@ export function timeLeft(expiryMs: number, now: number = Date.now()): string {
 export function shortAddr(a?: string): string {
   return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export function formatDate(ms: number): string {
+  const d = new Date(ms);
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}

@@ -3,6 +3,7 @@
 // on-chain BinaryMarket (lib/contracts/abi.ts) for a drop-in swap to live reads.
 
 import { STABLES, type Stable } from "@/lib/stables";
+import { formatDate } from "@/lib/format";
 
 export type MarketKind = "depeg" | "exploit";
 export type MarketStatus = "open" | "resolved-yes" | "resolved-no";
@@ -24,8 +25,13 @@ export type Market = {
 export const premiumPct = (m: Market) => m.priceYes;
 export const payoutMultiple = (m: Market) => 1 / m.priceYes;
 
+// Polymarket-style market title, shared by the card and the detail page.
+export const marketTitle = (m: Market) =>
+  `Will ${m.asset} lose its $1 peg by ${formatDate(m.expiry)}?`;
+
 // Fixed expiry keeps server/client render deterministic (no Date.now at load).
-const EXPIRY = Date.parse("2026-07-01T20:00:00Z");
+// All markets settle at end of year.
+const EXPIRY = Date.parse("2026-12-31T20:00:00Z");
 
 function toMarket(s: Stable): Market {
   return {

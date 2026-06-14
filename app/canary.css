@@ -121,6 +121,23 @@ body {
 .canary-btn--accent:hover {
   filter: none;
 }
+/* side-colored buy buttons (trade panel), matching the order book */
+.canary-btn--yes {
+  background: #26d07c;
+  color: #06160d;
+  font-weight: 600;
+  border: none;
+}
+.canary-btn--no {
+  background: #fb5a6a;
+  color: #1c0609;
+  font-weight: 600;
+  border: none;
+}
+.canary-btn--yes:hover,
+.canary-btn--no:hover {
+  filter: brightness(1.06);
+}
 
 /* launch button (arrow reveals on hover) */
 .canary-launch {
@@ -288,13 +305,101 @@ body {
 }
 .canary-detail-aside {
   position: sticky;
-  top: 20px;
+  /* a little breathing room above the column when pinned */
+  top: 18px;
+  align-self: start;
 }
 @media (max-width: 860px) {
   .canary-detail-grid {
     grid-template-columns: 1fr;
   }
   .canary-detail-aside {
+    position: static;
+  }
+}
+
+/* identity + stats: sticks to the top of the left column as you scroll, no
+   divider — the right column sticks alongside it */
+.canary-detail-head {
+  position: sticky;
+  top: 18px;
+  z-index: 5;
+  background: var(--c-bg);
+  padding: 6px 0 14px;
+}
+.canary-detail-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.canary-detail-title {
+  margin: 0;
+  font-family: var(--sans-stack);
+  font-weight: 700;
+  font-size: clamp(18px, 2.4vw, 26px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.canary-detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+  margin-top: 12px;
+}
+.canary-detail-h2 {
+  font-family: var(--sans-stack);
+  font-weight: 700;
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+/* neutral panel heading (replaces the gold kicker) */
+.canary-panel-title {
+  font-family: var(--sans-stack);
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--c-muted);
+}
+/* resolution specifics list */
+.canary-res {
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.canary-res > div {
+  display: flex;
+  gap: 16px;
+  font-family: var(--sans-stack);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.canary-res dt {
+  flex: 0 0 116px;
+  color: var(--c-faint);
+}
+.canary-res dd {
+  margin: 0;
+  color: var(--c-ink);
+}
+.canary-res dd strong {
+  font-weight: 600;
+}
+
+/* "coming soon" notice at the top of the right column */
+.canary-callout-danger {
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, #fb5a6a 14%, transparent);
+  border: 1px solid #fb5a6a;
+  color: #fb5a6a;
+}
+@media (max-width: 860px) {
+  .canary-detail-head {
     position: static;
   }
 }
@@ -334,8 +439,10 @@ body {
   color: var(--c-faint);
 }
 .canary-stat-value {
-  font-family: var(--font-mono);
+  font-family: var(--sans-stack);
+  font-weight: 600;
   font-size: 16px;
+  font-variant-numeric: tabular-nums;
   color: var(--c-ink);
 }
 
@@ -350,7 +457,8 @@ body {
 .canary-input {
   width: 100%;
   box-sizing: border-box;
-  font-family: var(--font-mono);
+  font-family: var(--sans-stack);
+  font-variant-numeric: tabular-nums;
   font-size: 16px;
   padding: 10px 12px;
   border: 1px solid var(--c-border);
@@ -382,12 +490,12 @@ body {
   background: transparent;
 }
 .canary-toggle-buysell button[data-active="true"][data-side="yes"] {
-  background: #789b55;
-  color: #fff;
+  background: #26d07c;
+  color: #06160d;
 }
 .canary-toggle-buysell button[data-active="true"][data-side="no"] {
-  background: #aa5f6e;
-  color: #fff;
+  background: #fb5a6a;
+  color: #1c0609;
 }
 
 /* info banner */
@@ -889,7 +997,7 @@ html {
   border: 1px solid var(--c-border);
   border-radius: 14px;
   background: var(--c-surface);
-  padding: 18px 16px 15px;
+  padding: 16px;
   transition: border-color 180ms ease, transform 180ms ease,
     background-color 240ms ease, color 240ms ease;
 }
@@ -1071,7 +1179,7 @@ html {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--c-muted);
-  cursor: help;
+  cursor: default;
   outline: none;
 }
 /* tooltip explaining the cheap/fair/pricey bands; right-aligned below the chip */
@@ -1132,17 +1240,25 @@ html {
 .canary-yes-top {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-bottom: 7px;
-}
-.canary-yes-label {
-  font-size: 13px;
-  color: var(--c-muted);
 }
 .canary-yes-price {
   font-family: var(--sans-stack);
   font-weight: 700;
   font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  transition: color 120ms ease;
+}
+/* while inspecting the line, tint the value with the token's brand color */
+.canary-yes-price[data-hover="true"] {
+  color: var(--brand, #ee9259);
+}
+/* wraps the svg so the hover dot can be positioned in pixel space (the svg
+   itself stretches via preserveAspectRatio:none, which would warp a circle) */
+.canary-spark-wrap {
+  position: relative;
+  touch-action: none;
 }
 .canary-yes-spark {
   display: block;
@@ -1151,6 +1267,16 @@ html {
   color: var(--brand, #ee9259);
   opacity: 0.85;
   overflow: visible;
+}
+.canary-spark-dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand, #ee9259);
+  border: 1.5px solid var(--c-surface-2);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 /* single cover quote: label + solid green price box */
 .canary-cover-row {
@@ -1187,6 +1313,8 @@ html {
   justify-content: space-between;
   margin-top: 12px;
   font-size: 12px;
+  /* tight line box so the row hugs the card's bottom padding evenly */
+  line-height: 1;
   color: var(--c-faint);
 }
 .canary-share {
@@ -1198,6 +1326,390 @@ html {
 }
 .canary-share:hover {
   color: var(--c-ink);
+}
+
+/* ---- expert: market-maker market rows ----------------------------------- */
+/* Full-width rows. Shell mirrors .canary-stable-card so Simple/Expert read as
+   one family. Left half = full-height candle chart, right half = order book +
+   actions. */
+:root {
+  --ob-up: #26d07c;
+  --ob-down: #fb5a6a;
+}
+.canary-mm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.canary-mm-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 30px;
+  min-height: 300px;
+  color: var(--c-ink);
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  background: var(--c-surface);
+  padding: 16px 18px;
+}
+@media (max-width: 760px) {
+  .canary-mm-card {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+
+/* left column (a link to the market): identity → candles → liquidity/volume */
+.canary-mm-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+/* crisp header coin, same as Simple's StableCard */
+.canary-mm-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.canary-mm-name {
+  font-family: var(--sans-stack);
+  font-weight: 700;
+  font-size: 15.5px;
+  line-height: 1.25;
+}
+.canary-mm-sub {
+  font-family: var(--sans-stack);
+  font-size: 12px;
+  color: var(--c-faint);
+  margin-top: 3px;
+}
+/* full-height interactive chart: grows to fill the row between header/footer */
+.canary-mm-chart {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 200px;
+  margin: 12px 0;
+}
+.canary-chart {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+.canary-chart-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.canary-chart-tfs {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.canary-chart-tf {
+  font-family: var(--sans-stack);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--c-faint);
+  transition: color 140ms ease, background 140ms ease;
+}
+.canary-chart-tf:hover {
+  color: var(--c-ink);
+}
+.canary-chart-tf[data-active="true"] {
+  background: color-mix(in srgb, var(--c-ink) 12%, transparent);
+  color: var(--c-ink);
+}
+.canary-chart-canvas {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 160px;
+}
+/* footer mirrors the muted Simple .canary-card-foot */
+.canary-mm-foot {
+  display: flex;
+  gap: 18px;
+  margin-top: auto;
+  font-family: var(--sans-stack);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--c-faint);
+}
+.canary-mm-foot strong {
+  color: var(--c-muted);
+  font-weight: 600;
+}
+
+/* right column: compact order book over the action row */
+.canary-ob-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* order book fills the column; the ladder spreads to use the available height */
+.canary-ob {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.canary-ob-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--sans-stack);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-ink);
+  margin-bottom: 10px;
+}
+.canary-ob-spread {
+  font-family: var(--sans-stack);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-muted);
+}
+.canary-ob-rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  justify-content: space-between;
+  gap: 3px;
+}
+.canary-ob-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.canary-ob-price {
+  font-weight: 600;
+  color: var(--c-ink);
+}
+.canary-ob-row[data-side="ask"] .canary-ob-price {
+  color: #ff7a86;
+}
+.canary-ob-row[data-side="bid"] .canary-ob-price {
+  color: #3ddc8a;
+}
+.canary-ob-depth {
+  height: 13px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.canary-ob-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  min-width: 2px;
+}
+.canary-ob-row[data-side="ask"] .canary-ob-fill {
+  background: color-mix(in srgb, var(--ob-down) 40%, transparent);
+}
+.canary-ob-row[data-side="bid"] .canary-ob-fill {
+  background: color-mix(in srgb, var(--ob-up) 40%, transparent);
+}
+.canary-ob-size {
+  color: var(--c-muted);
+  font-weight: 500;
+}
+/* clickable rows (market detail): picking a level fills a buy intent */
+button.canary-ob-row {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  border: none;
+  width: calc(100% + 8px);
+  margin: 0 -4px;
+  padding: 2px 4px;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+button.canary-ob-row[data-side="ask"]:hover {
+  background: color-mix(in srgb, var(--ob-down) 16%, transparent);
+}
+button.canary-ob-row[data-side="bid"]:hover {
+  background: color-mix(in srgb, var(--ob-up) 16%, transparent);
+}
+
+/* market detail: chart sits above the order book */
+.canary-detail-chart {
+  display: flex;
+  height: 280px;
+  margin: 28px 0 24px;
+}
+/* mid line: market price + payout, the row a MM/buyer reads first */
+.canary-ob-mid {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 7px 0;
+  border-top: 1px solid var(--c-border);
+  border-bottom: 1px solid var(--c-border);
+  font-family: var(--sans-stack);
+}
+.canary-ob-mid-price {
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-ink);
+}
+.canary-ob-mid-sub {
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+/* action row pinned to the bottom of the right column */
+.canary-mm-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+.canary-mm-cta {
+  flex: 1;
+  height: 38px;
+  padding: 0 14px;
+}
+.canary-mm-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-muted);
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.canary-mm-iconbtn:hover {
+  color: var(--c-ink);
+  border-color: color-mix(in srgb, var(--c-ink) 28%, transparent);
+}
+
+/* promotions: Polymarket-style rewards tooltip with an orange border */
+.canary-promo {
+  position: relative;
+  cursor: pointer;
+  outline: none;
+}
+.canary-promo-tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 268px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #14171b;
+  border: 1px solid #ee9259;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity 150ms ease, transform 160ms ease;
+  z-index: 30;
+}
+/* transparent bridge across the gap so the cursor can travel from the icon onto
+   the tooltip (a descendant) without :hover dropping and closing it */
+.canary-promo-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 12px;
+}
+.canary-promo:hover .canary-promo-tip,
+.canary-promo:focus-visible .canary-promo-tip {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.canary-promo-tip-lead {
+  margin: 0;
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #cfd2d6;
+}
+.canary-promo-link {
+  color: #ee9259;
+}
+.canary-promo-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 13px 0;
+  font-family: var(--sans-stack);
+  font-size: 13px;
+}
+.canary-promo-rows > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #8a8f96;
+}
+.canary-promo-val,
+.canary-promo-fig {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e6e8ea;
+  font-weight: 600;
+}
+.canary-coin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ee9259;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+.canary-promo-div {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 13px 0;
+}
+/* inactive (placeholder) — sponsoring isn't wired yet */
+.canary-promo-add {
+  margin-top: 13px;
+  text-align: center;
+  padding: 9px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, #ee9259 45%, transparent);
+  color: color-mix(in srgb, #ee9259 70%, transparent);
+  font-family: var(--sans-stack);
+  font-weight: 600;
+  font-size: 13px;
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* ---- mini card (flat, draggable hero chips) ----------------------------- */
