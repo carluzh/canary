@@ -49,12 +49,25 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function buildSeries(symbol: string, tfKey: string): CandlestickData[] {
+function buildSeries(symbol: string, tfKey: string, flat: boolean): CandlestickData[] {
   const tf = TIMEFRAMES.find((t) => t.key === tfKey) ?? TIMEFRAMES[1];
-  const rng = mulberry32(hashSeed(`${symbol}-${tfKey}`));
   const out: CandlestickData[] = [];
-  let price = 0.35 + rng() * 0.3;
   let t = ANCHOR - tf.bars * tf.step;
+
+  // Active market (USDe): the peg held at $1.00 historically, so every past
+  // candle is flat $1.00. The current candle is overwritten with the live
+  // on-chain feed price by the snap effect below (true data, not synthetic).
+  if (flat) {
+    for (let i = 0; i < tf.bars; i++) {
+      out.push({ time: t as UTCTimestamp, open: 1, high: 1, low: 1, close: 1 });
+      t += tf.step;
+    }
+    return out;
+  }
+
+  // View-only markets keep deterministic synthetic candles (cosmetic).
+  const rng = mulberry32(hashSeed(`${symbol}-${tfKey}`));
+  let price = 0.35 + rng() * 0.3;
   for (let i = 0; i < tf.bars; i++) {
     const o = price;
     const c = Math.max(0.02, Math.min(0.98, o + (rng() - 0.5) * 0.06));
@@ -79,6 +92,8 @@ export function PriceChart({ symbol }: { symbol: string }) {
   const { feed } = useDemoMarket();
   const liveFeed = coverMarket ? feed : null;
   const { price: livePrice } = useFeedPrice(liveFeed);
+  // Active market => flat $1.00 history + a live current candle from the feed.
+  const isActive = !!coverMarket;
 
   // Series handle + the last synthetic bar, shared between the build effect and
   // the live-snap effect so we can update the final candle in place.
@@ -119,7 +134,7 @@ export function PriceChart({ symbol }: { symbol: string }) {
       borderVisible: false,
     });
 
-    const data = buildSeries(symbol, tf);
+    const data = buildSeries(symbol, tf, isActive);
     series.setData(data);
     chart.timeScale().fitContent();
 
@@ -131,7 +146,7 @@ export function PriceChart({ symbol }: { symbol: string }) {
       lastBarRef.current = null;
       chart.remove();
     };
-  }, [symbol, tf]);
+  }, [symbol, tf, isActive]);
 
   // On each 1s poll, snap the latest candle's close to the live feed price for
   // the active market (high/low widen to contain it). This is purely additive:
@@ -141,12 +156,15 @@ export function PriceChart({ symbol }: { symbol: string }) {
     const base = lastBarRef.current;
     if (!series || !base || livePrice == null) return;
 
-    const close = Math.max(0.01, Math.min(0.99, livePrice));
+    // livePrice is the USDe/USD feed value (~$1.00, dropping to ~$0.94 on a
+    // crash). No 0..1 clamp: the current candle reflects the true on-chain price,
+    // opening at the $1 peg (base) and closing at the live feed.
+    const close = Math.max(0, Math.min(2, livePrice));
     const next: CandlestickData = {
       ...base,
       close,
-      high: Math.min(0.99, Math.max(base.high, close)),
-      low: Math.max(0.01, Math.min(base.low, close)),
+      high: Math.max(base.high, close),
+      low: Math.min(base.low, close),
     };
     series.update(next);
   }, [livePrice]);
