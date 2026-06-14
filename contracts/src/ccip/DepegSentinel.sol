@@ -19,6 +19,13 @@ contract DepegSentinel {
 
     event Relayed(bytes32 indexed messageId, uint80 sourceRoundId, int256 answer, uint256 updatedAt);
 
+    // CCIP EVMExtraArgsV2: explicit destination gas limit + out-of-order
+    // execution (required by 1.6 lanes). RelayedFeed.ccipReceive does a handful
+    // of SSTOREs; 300k is ample. Relying on the router's default (empty args)
+    // under-provisions gas and the destination execution reverts.
+    bytes4 private constant EVM_EXTRA_ARGS_V2_TAG = 0x181dcf10;
+    uint256 private constant DEST_GAS_LIMIT = 300_000;
+
     AggregatorV3Interface public immutable feed;
     IRouterClient public immutable router;
     uint64 public immutable destChainSelector; // CCIP selector for Arc
@@ -67,7 +74,7 @@ contract DepegSentinel {
             data: abi.encode(roundId, answer, updatedAt),
             tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(0), // native
-            extraArgs: ""
+            extraArgs: abi.encodeWithSelector(EVM_EXTRA_ARGS_V2_TAG, DEST_GAS_LIMIT, true)
         });
     }
 }

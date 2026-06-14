@@ -15,6 +15,16 @@ Deployed and seeded on testnet. Deployer: `0xb135A894e1fb22f12AE375E5A2127171547
 
 Both markets are seeded with an underwriter ask: demo market YES @ **$0.015 (1.5% implied depeg probability)**, relayed market YES @ **$0.02 (2%)** — a realistic low-single-digit USDe tail with a slight term structure (the 30-day relayed market prices marginally above the 7-day demo market).
 
+## Arc Testnet — self-funding yield market
+
+| Contract | Address |
+|---|---|
+| MockYieldVault (asset = USDC) | `0xD55835F9a5b479De306f94EF3301A1E16E935920` |
+| CanaryMarketFactory (yield-enabled build) | `0xf7C7Bfb584356550E85e568E281C0AA0758A4AA7` |
+| Yield market — "USDe < $0.95 (self-funding)" | `0x5E6caB3f8b12A735a84b6241CA413D06a2D39fd1` |
+
+Config: 0% protocol fee (testnet), **30% of net yield rebated to coverage buyers**, 70% to underwriters; 100% of collateral deployed to the venue (no idle buffer). **Verified live on Arc:** a buyer paid a 40,000 (=$0.04) premium, $1.00 of yield was harvested and split exactly 300,000 / 700,000 (30/70), and the buyer claimed their 300,000 rebate — netting a **profit while still holding the cover** ("the float pays the premium"). In production the vault is USYC (T-bill yield, independent of the insured USDe risk) or an Aave-USDC 4626.
+
 ## Ethereum Sepolia (CCIP relay source)
 
 | Contract | Address |

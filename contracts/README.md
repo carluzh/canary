@@ -63,6 +63,18 @@ source chain (e.g. Sepolia)                 Arc
 
 For the live demo the market points at an operator-controllable feed instead (crash on cue); the CCIP path powers a second "live Chainlink data" market for credibility, so the stage demo never depends on cross-chain latency.
 
+### Self-funding yield layer (optional, `src/interfaces/IYieldStrategy.sol`)
+
+Off unless `factory.createYieldMarket(...)` (or `market.enableYield(...)`) is used — when off, the market behaves exactly as the order-book core above (all base tests pass unchanged).
+
+When on, **100% of idle collateral is rehypothecated** into a yield venue (`IYieldStrategy` — USYC, an Aave-USDC 4626, or `MockYieldVault` for tests); there's no idle buffer, withdrawals redeem exactly what they need, so capital earns until the instant it leaves (instant settlement relies on the venue's atomic redeem). Yield is split three ways on each harvest:
+
+- a **protocol fee** (bps, **0 on testnet**),
+- the **underwriters** (NO holders) — "deposit to underwrite, earn yield + premiums",
+- a **rebate to coverage buyers** (YES holders) that lowers their net premium — for deep-tail, long-dated cover the rebate can exceed the premium, so the **cover funds itself**.
+
+Distribution within each side is pro-rata by held-balance × time (MasterChef-style accumulators, `accYieldPerYes`/`accYieldPerNo`); tokens resting in open orders forgo yield, which is socialised to active holders. The venue must be independent of the insured risk (e.g. USYC's T-bill yield vs a USDe depeg) — enforced socially plus an `asset() == collateral` check. Key views: `pendingYield(account)`, `totalCollateralValue()`. See `DEPLOYMENTS.md` for the live Arc yield market.
+
 ### Frontend integration cheat-sheet
 
 ```
@@ -77,7 +89,7 @@ Amounts use collateral decimals (USDC = 6). Prices are 1e6-scaled probabilities.
 
 ## Testing
 
-93 tests, three layers. `forge test` runs them all.
+111 tests, three layers (incl. the yield layer: rehypothecation, the 3-way split, self-funding cover, and a solvency-including-yield invariant). `forge test` runs them all.
 
 | Layer | Where | What |
 |---|---|---|
