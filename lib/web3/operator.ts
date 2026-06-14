@@ -36,7 +36,7 @@ export const BREACH_WINDOW = 5n; // seconds; != 0 so it is a legal market
 export const DEPEG_THRESHOLD = 95000000n; // 0.95e8 on the 8-dec feed
 export const SEED_PRICE = 15000n; // 1.5% (uint64) YES sell ask
 export const SEED_SHARES = 5_000000n; // 5 USDC, 6-dec base units (small so the operator can run several demos on one faucet claim)
-export const DEMO_EXPIRY_SECS = 3600;
+export const DEMO_EXPIRY_SECS = 604800; // 7 days, so a created demo market stays settleable for the whole event (1h was too short — markets expired mid-session)
 
 const ONE_DOLLAR = 100000000n; // 1e8 (un-crashed feed)
 const CRASH_098 = 98000000n; // 0.98e8 (visible dip, above threshold)
