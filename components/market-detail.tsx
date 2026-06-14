@@ -111,7 +111,7 @@ function MarketDetailLive({
                   {m.asset.slice(0, 1)}
                 </span>
               )}
-              <h1 className="canary-detail-title">{marketTitle(m)}</h1>
+              <h1 className="canary-detail-title">{marketTitle(m, expiryMs)}</h1>
               {live ? <StatusBadge state={badgeState} /> : (
                 <span className="canary-soon">View Only</span>
               )}
@@ -167,7 +167,7 @@ function MarketDetailLive({
               </div>
               <div>
                 <dt>Expiry</dt>
-                <dd>{formatDate(m.expiry)}</dd>
+                <dd>{formatDate(expiryMs)}</dd>
               </div>
               <div>
                 <dt>Settlement</dt>

@@ -34,8 +34,21 @@ import {
 // ---- Demo constants -------------------------------------------------------
 export const BREACH_WINDOW = 5n; // seconds; != 0 so it is a legal market
 export const DEPEG_THRESHOLD = 95000000n; // 0.95e8 on the 8-dec feed
-export const SEED_PRICE = 15000n; // 1.5% (uint64) YES sell ask
-export const SEED_SHARES = 5_000000n; // 5 USDC, 6-dec base units (small so the operator can run several demos on one faucet claim)
+export const SEED_SHARES = 5_000000n; // 5 USDC minted (6-dec); covers both sides below (<=5 each). Small so the operator can run several demos per faucet claim.
+// Seed a full two-sided book from the single mint. YES asks are cover supply
+// (Buy YES fills them, cheapest first; best ask 1.5% = the displayed price). NO
+// asks render as YES bids in the unified book at (1 - price) and are filled by
+// Buy NO. Each side's amounts sum to 4.5 <= SEED_SHARES.
+export const SEED_YES_ASKS: { price: bigint; amount: bigint }[] = [
+  { price: 15000n, amount: 1_800000n }, // ask 1.5% (best)
+  { price: 19000n, amount: 700000n }, // ask 1.9%
+  { price: 27000n, amount: 2_000000n }, // ask 2.7%
+];
+export const SEED_NO_ASKS: { price: bigint; amount: bigint }[] = [
+  { price: 987000n, amount: 1_100000n }, // shows as YES bid 1.3%
+  { price: 990000n, amount: 2_300000n }, // shows as YES bid 1.0%
+  { price: 996000n, amount: 900000n }, // shows as YES bid 0.4%
+];
 export const DEMO_EXPIRY_SECS = 604800; // 7 days, so a created demo market stays settleable for the whole event (1h was too short — markets expired mid-session)
 
 const ONE_DOLLAR = 100000000n; // 1e8 (un-crashed feed)
@@ -269,7 +282,8 @@ export async function createCoverMarket(
     throw new Error("Create market: MarketCreated event not found in receipt.");
   }
 
-  // 3) Seed: approve USDC -> mintSets -> place YES sell ask.
+  // 3) Seed a two-sided book: approve USDC -> mintSets -> post YES asks (cover
+  // supply) and NO asks (render as YES bids), all from the one mint.
   onStep?.("Approving collateral");
   await send(
     "Approve USDC",
@@ -282,13 +296,29 @@ export async function createCoverMarket(
   onStep?.("Minting outcome sets");
   await send("Mint sets", market, CANARY_MARKET_ABI, "mintSets", [SEED_SHARES]);
 
-  onStep?.("Placing cover ask");
-  await send("Place order", market, CANARY_MARKET_ABI, "placeOrder", [
-    true, // isYes
-    false, // isBuy=false -> sell
-    SEED_PRICE,
-    SEED_SHARES,
-  ]);
+  // YES asks — cover supply, fillable by Buy YES.
+  for (let i = 0; i < SEED_YES_ASKS.length; i++) {
+    const o = SEED_YES_ASKS[i]!;
+    onStep?.(`Placing YES ask ${i + 1}/${SEED_YES_ASKS.length}`);
+    await send("Place YES ask", market, CANARY_MARKET_ABI, "placeOrder", [
+      true, // isYes
+      false, // sell
+      o.price,
+      o.amount,
+    ]);
+  }
+
+  // NO asks — show as YES bids in the unified book, fillable by Buy NO.
+  for (let i = 0; i < SEED_NO_ASKS.length; i++) {
+    const o = SEED_NO_ASKS[i]!;
+    onStep?.(`Placing YES bid ${i + 1}/${SEED_NO_ASKS.length}`);
+    await send("Place NO ask", market, CANARY_MARKET_ABI, "placeOrder", [
+      false, // isYes=false -> NO
+      false, // sell
+      o.price,
+      o.amount,
+    ]);
+  }
 
   return { market, feed: DEMO_FEED_ADDRESS };
 }

@@ -36,9 +36,11 @@ export type Market = {
 export const premiumPct = (m: Market) => m.priceYes;
 export const payoutMultiple = (m: Market) => 1 / m.priceYes;
 
-// Polymarket-style market title, shared by the card and the detail page.
-export const marketTitle = (m: Market) =>
-  `Will ${m.asset} lose its $1 peg by ${formatDate(m.expiry)}?`;
+// Polymarket-style market title, shared by the card and the detail page. The
+// optional expiryMs override lets a live market show its real on-chain expiry
+// instead of the mock EXPIRY, keeping the title in sync with the countdown.
+export const marketTitle = (m: Market, expiryMs?: number) =>
+  `Will ${m.asset} lose its $1 peg by ${formatDate(expiryMs ?? m.expiry)}?`;
 
 // Fixed expiry keeps server/client render deterministic (no Date.now at load).
 // All markets settle at end of year.
