@@ -35,7 +35,7 @@ import {
 export const BREACH_WINDOW = 5n; // seconds; != 0 so it is a legal market
 export const DEPEG_THRESHOLD = 95000000n; // 0.95e8 on the 8-dec feed
 export const SEED_PRICE = 15000n; // 1.5% (uint64) YES sell ask
-export const SEED_SHARES = 20_000000n; // 20 USDC, 6-dec base units
+export const SEED_SHARES = 5_000000n; // 5 USDC, 6-dec base units (small so the operator can run several demos on one faucet claim)
 export const DEMO_EXPIRY_SECS = 3600;
 
 const ONE_DOLLAR = 100000000n; // 1e8 (un-crashed feed)
@@ -49,6 +49,16 @@ const FEED_ABI = [
     name: "updateAnswer",
     stateMutability: "nonpayable",
     inputs: [{ name: "_answer", type: "int256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "updateAnswerAt",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_answer", type: "int256" },
+      { name: "_updatedAt", type: "uint256" },
+    ],
     outputs: [],
   },
   {
@@ -231,9 +241,11 @@ export async function createCoverMarket(
     "Create market",
     MARKET_FACTORY_ADDRESS,
     CANARY_FACTORY_ABI,
-    // Yield-enabled: idle collateral is rehypothecated into the demo vault, so a
-    // held NO position earns yield (the "self-funding cover" angle).
-    "createYieldMarket",
+    // Plain market with a short 5s breach window so a crash settles fast. (The
+    // yield-enabled variant reverts against the already-used shared demo vault,
+    // and live yield is not surfaced in the UI, so a plain market fully supports
+    // buy / provide-liquidity / crash / redeem.)
+    "createMarket",
     [
       DEMO_FEED_ADDRESS,
       DEPEG_THRESHOLD,
@@ -241,10 +253,6 @@ export async function createCoverMarket(
       expiry,
       60n,
       "USDe < $0.95 (demo)",
-      YIELD_VAULT_ADDRESS, // yield strategy
-      0n, // protocolFeeBps (0 on testnet)
-      3000n, // buyerRebateBps (30% of yield rebated to YES buyers)
-      getAccount().address, // feeRecipient
     ],
   );
   const createReceipt = await pub.waitForTransactionReceipt({ hash: createHash });
@@ -309,6 +317,16 @@ export async function crashAndSettle(
     return;
   }
 
+  // Read the market's ACTUAL breach window. The seeded default market is 900s; a
+  // freshly-created demo market is 5s. marketInfo() ->
+  // (state, collateral, priceFeed, depegThreshold, breachWindow, expiry, ...).
+  const info = (await pub.readContract({
+    address: market,
+    abi: CANARY_MARKET_ABI,
+    functionName: "marketInfo",
+  })) as readonly unknown[];
+  const breachWindow = BigInt(info[4] as bigint);
+
   // 1) Visible descending crash. The 0.94 push is the breaching round.
   onStep?.("Pushing crash to $0.98");
   await send("Crash 0.98", feed, FEED_ABI as Abi, "updateAnswer", [CRASH_098]);
@@ -321,10 +339,24 @@ export async function crashAndSettle(
     abi: FEED_ABI as Abi,
     functionName: "latestRound",
   })) as bigint;
+  const round = (await pub.readContract({
+    address: feed,
+    abi: FEED_ABI as Abi,
+    functionName: "getRoundData",
+    args: [startRound],
+  })) as readonly [bigint, bigint, bigint, bigint, bigint];
+  const startUpdatedAt = round[3];
 
-  // 2) Wait the breach window in real time.
-  onStep?.("Waiting breach window");
-  await sleep((Number(BREACH_WINDOW) + 2) * 1000);
+  // 2) Instant settle: push a SECOND sub-threshold round dated just past the
+  // window end. settleDepeg's round-walk then sees a sustained breach across the
+  // whole window and terminates on the first step, regardless of how long
+  // breachWindow is. No real-time wait; works on the 900s default market and 5s
+  // created markets alike.
+  onStep?.("Confirming breach");
+  await send("Confirm breach", feed, FEED_ABI as Abi, "updateAnswerAt", [
+    CRASH_094,
+    startUpdatedAt + breachWindow + 1n,
+  ]);
 
   // 3) Settle the depeg from the breaching round.
   onStep?.("Settling depeg");

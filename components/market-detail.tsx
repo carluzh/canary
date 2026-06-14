@@ -50,6 +50,8 @@ function MarketDetailLive({
   const stable = STABLES.find((s) => s.symbol === m.asset);
   const live = isMarketActive(m);
   const onPick = (p: OrderPick) => setIntent({ side: p.side, amount: p.size });
+  // Side (YES/NO) shared between the order book and the trade panel.
+  const [side, setSide] = useState<"yes" | "no">("yes");
 
   // useLiveMarket is safe for all markets (mock passthrough when view-only), so
   // the first paint stays deterministic with the mock value and only the active
@@ -131,6 +133,8 @@ function MarketDetailLive({
           <OrderBook
             m={m}
             onPick={onPick}
+            side={side}
+            onSideChange={setSide}
             headerAction={live ? <ProvideLiquidity m={m} /> : undefined}
           />
 
@@ -199,7 +203,7 @@ function MarketDetailLive({
               view only.
             </div>
           )}
-          <TradePanel m={m} forceExpert intent={intent} />
+          <TradePanel m={m} forceExpert intent={intent} side={side} onSideChange={setSide} />
           <PositionPanel
             m={m}
             live={live}

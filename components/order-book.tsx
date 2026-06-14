@@ -1,16 +1,18 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { Market } from "@/lib/markets";
 import { isMarketActive } from "@/lib/markets";
-import { usd, priceScaleToFraction, sharesToUsd } from "@/lib/format";
+import { priceScaleToFraction, sharesToUsd } from "@/lib/format";
 import { useLiveMarket } from "@/lib/contracts/markets-onchain";
 
-// Shared limit-order book: a static display on the Expert card, and clickable on
-// the market detail page where picking a level fills a Buy YES / Buy NO intent.
-// Synthetic but deterministic per market (swap buildBook for the live book later).
+// Two separate books, one for YES and one for NO, toggled in the header. The
+// selected side is shared with the trade panel (clicking Buy YES / Buy NO flips
+// the book too). Live on Arc for USDe; synthetic + deterministic for the rest.
 
 const subCents = (p: number) => `${(p * 100).toFixed(1)}¢`;
+// Order size is a SHARE count (each share redeems for $1), not a dollar amount.
+const fmtSize = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 function hashSeed(str: string): number {
   let h = 2166136261;
@@ -30,8 +32,6 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-// What a clicked level resolves to: an ask (someone offering YES) → Buy YES at
-// that price; a bid (someone bidding for YES) → Buy NO at the mirror price.
 export type OrderPick = { side: "yes" | "no"; price: number; size: number };
 type Order = { price: number; size: number };
 
@@ -50,35 +50,8 @@ export function buildBook(symbol: string, mid: number) {
     bids.push({ price: Math.max(0.003, b), size: size() });
   }
   asks.reverse(); // top → bottom: highest ask down to the best (lowest) ask
-  const bestAsk = asks[asks.length - 1]!.price;
-  const bestBid = bids[0]!.price;
   const maxSize = Math.max(...asks.map((o) => o.size), ...bids.map((o) => o.size));
-  return { asks, bids, spread: bestAsk - bestBid, maxSize };
-}
-
-// Derive display rows from the live on-chain YES book. Asks = sell-YES offers
-// (cover supply), bids = buy-YES orders. Tolerates a one-sided book: the live
-// demo carries a single ask and no bids, so every spread/best calc is guarded.
-function liveBook(
-  book: { ids: bigint[]; orders: OnchainOrderLike[] }
-): { asks: Order[]; bids: Order[]; spread: number; maxSize: number } {
-  const asks: Order[] = [];
-  const bids: Order[] = [];
-  for (const o of book.orders) {
-    if (!o.isYes || o.remaining <= 0n) continue;
-    const row = { price: priceScaleToFraction(o.price), size: sharesToUsd(o.remaining) };
-    if (!o.isBuy) asks.push(row);
-    else bids.push(row);
-  }
-  // top → bottom: highest ask down to the best (lowest) ask, matching synthetic layout.
-  asks.sort((x, y) => y.price - x.price);
-  bids.sort((x, y) => y.price - x.price);
-  const bestAsk = asks.length ? asks[asks.length - 1]!.price : null;
-  const bestBid = bids.length ? bids[0]!.price : null;
-  const spread = bestAsk != null && bestBid != null ? bestAsk - bestBid : 0;
-  const sizes = [...asks, ...bids].map((o) => o.size);
-  const maxSize = sizes.length ? Math.max(...sizes) : 1;
-  return { asks, bids, spread, maxSize };
+  return { asks, bids, maxSize };
 }
 
 type OnchainOrderLike = {
@@ -88,59 +61,137 @@ type OnchainOrderLike = {
   remaining: bigint;
 };
 
+// Live book for ONE side (yes or no), at that side's own price. asks = sell
+// offers, bids = buy orders. Tolerates a one-sided book.
+function liveBook(
+  book: { ids: bigint[]; orders: OnchainOrderLike[] },
+  yes: boolean
+): { asks: Order[]; bids: Order[]; maxSize: number } {
+  const asks: Order[] = [];
+  const bids: Order[] = [];
+  for (const o of book.orders) {
+    if (o.isYes !== yes || o.remaining <= 0n) continue;
+    const row = { price: priceScaleToFraction(o.price), size: sharesToUsd(o.remaining) };
+    if (!o.isBuy) asks.push(row);
+    else bids.push(row);
+  }
+  asks.sort((x, y) => y.price - x.price);
+  bids.sort((x, y) => y.price - x.price);
+  const sizes = [...asks, ...bids].map((o) => o.size);
+  const maxSize = sizes.length ? Math.max(...sizes) : 1;
+  return { asks, bids, maxSize };
+}
+
 export function OrderBook({
   m,
   onPick,
   headerAction,
+  side: sideProp,
+  onSideChange,
 }: {
   m: Market;
   onPick?: (p: OrderPick) => void;
   headerAction?: ReactNode;
+  // Controlled side (shared with the trade panel). Falls back to internal state.
+  side?: "yes" | "no";
+  onSideChange?: (s: "yes" | "no") => void;
 }) {
+  const [sideInner, setSideInner] = useState<"yes" | "no">("yes");
+  const side = sideProp ?? sideInner;
+  const setSide = onSideChange ?? setSideInner;
+  const yes = side === "yes";
+
   const { book, price, live } = useLiveMarket(m);
   const useLive = isMarketActive(m) && live && book.orders.length > 0;
-  const synthetic = buildBook(m.asset, m.priceYes);
-  const derived = useLive ? liveBook(book) : synthetic;
-  const { asks, bids, spread, maxSize } = derived;
+  const yesPrice = useLive ? price : m.priceYes;
+  const mid = yes ? yesPrice : 1 - yesPrice;
+  const { asks, bids, maxSize } = useLive
+    ? liveBook(book, yes)
+    : buildBook(`${m.asset}-${side}`, mid);
   // Synthetic levels are not fillable, so only the live book gets a click handler.
-  const pick = useLive ? onPick : undefined;
-  // Mid = live market price when live, mock priceYes otherwise (deterministic SSR paint).
-  const mid = subCents(useLive ? price : m.priceYes);
+  const clickable = useLive && !!onPick;
+
   return (
     <div className="canary-ob">
       <div className="canary-ob-head">
         <span>Order book</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
-          <span className="canary-ob-spread">spread {subCents(spread)}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+          <SideToggle side={side} onChange={setSide} />
           {headerAction}
         </span>
       </div>
       <div className="canary-ob-rows">
         {asks.map((o, i) => (
-          <ObRow key={`a${i}`} side="ask" o={o} maxSize={maxSize} onPick={pick} />
+          <ObRow
+            key={`a${i}`}
+            kind="ask"
+            o={o}
+            maxSize={maxSize}
+            onClick={clickable ? () => onPick!({ side, price: o.price, size: o.size }) : undefined}
+          />
         ))}
         <div className="canary-ob-mid">
-          <span className="canary-ob-mid-price">{mid}</span>
+          <span className="canary-ob-mid-price">{subCents(mid)}</span>
           <span className="canary-ob-mid-sub">Mid price</span>
         </div>
         {bids.map((o, i) => (
-          <ObRow key={`b${i}`} side="bid" o={o} maxSize={maxSize} onPick={pick} />
+          <ObRow
+            key={`b${i}`}
+            kind="bid"
+            o={o}
+            maxSize={maxSize}
+            onClick={clickable ? () => onPick!({ side, price: o.price, size: o.size }) : undefined}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function ObRow({
+function SideToggle({
   side,
+  onChange,
+}: {
+  side: "yes" | "no";
+  onChange: (s: "yes" | "no") => void;
+}) {
+  const item = (s: "yes" | "no", label: string) => (
+    <button
+      type="button"
+      onClick={() => onChange(s)}
+      style={{
+        background: side === s ? "var(--c-surface-2)" : "transparent",
+        border: "1px solid var(--c-border)",
+        color: side === s ? "var(--c-ink)" : "var(--c-muted)",
+        fontFamily: "var(--sans-stack)",
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "3px 9px",
+        borderRadius: 7,
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <span style={{ display: "inline-flex", gap: 4 }}>
+      {item("yes", "Yes")}
+      {item("no", "No")}
+    </span>
+  );
+}
+
+function ObRow({
+  kind,
   o,
   maxSize,
-  onPick,
+  onClick,
 }: {
-  side: "ask" | "bid";
+  kind: "ask" | "bid";
   o: Order;
   maxSize: number;
-  onPick?: (p: OrderPick) => void;
+  onClick?: () => void;
 }) {
   const inner = (
     <>
@@ -151,13 +202,13 @@ function ObRow({
           style={{ width: `${Math.round((o.size / maxSize) * 100)}%` }}
         />
       </span>
-      <span className="canary-ob-size">{usd(o.size)}</span>
+      <span className="canary-ob-size">{fmtSize(o.size)}</span>
     </>
   );
 
-  if (!onPick) {
+  if (!onClick) {
     return (
-      <div className="canary-ob-row" data-side={side}>
+      <div className="canary-ob-row" data-side={kind}>
         {inner}
       </div>
     );
@@ -166,15 +217,9 @@ function ObRow({
     <button
       type="button"
       className="canary-ob-row"
-      data-side={side}
+      data-side={kind}
       data-clickable="true"
-      onClick={() =>
-        onPick(
-          side === "ask"
-            ? { side: "yes", price: o.price, size: o.size }
-            : { side: "no", price: 1 - o.price, size: o.size }
-        )
-      }
+      onClick={onClick}
     >
       {inner}
     </button>

@@ -30,13 +30,16 @@ const clampPrice = (p: number) => Math.min(999_999, Math.max(1, Math.round(p)));
 
 export function ProvideLiquidity({ m }: { m: Market }) {
   const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
         style={{
-          background: "transparent",
+          background: hover ? "var(--c-surface-2)" : "transparent",
           border: "1px solid var(--c-border)",
           color: "var(--c-accent)",
           fontFamily: "var(--sans-stack)",
@@ -45,9 +48,11 @@ export function ProvideLiquidity({ m }: { m: Market }) {
           padding: "4px 10px",
           borderRadius: 8,
           whiteSpace: "nowrap",
+          cursor: "pointer",
+          transition: "background 120ms ease",
         }}
       >
-        + Provide Liquidity
+        Provide Liquidity
       </button>
       {open && <LpModal m={m} onClose={() => setOpen(false)} />}
     </>
