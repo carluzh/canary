@@ -1,0 +1,7 @@
+{
+  "schedule": "0 */1 * * * *",
+  "chainSelectorName": "arc-testnet",
+  "feed": "0xFB372fC78B0088Fef05cecE85bEFBCa546Cd059e",
+  "receiver": "0x17a6aC04372a6A0be1d99D7962bA837C217bca8f",
+  "thresholdE8": "95000000"
+}
