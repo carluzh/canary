@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import {
   useAccount,
   useConnect,
@@ -16,7 +17,21 @@ export function ConnectWallet() {
   const { connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
+  const { switchChain, switchChainAsync } = useSwitchChain();
+
+  // Keep the wallet on Arc automatically so deposits never hit a wrong-network
+  // error. Guarded by the chain we last prompted for, so a rejected switch isn't
+  // re-fired in a loop (only retries once the wallet lands on a new chain).
+  const promptedFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isConnected || chainId === arcTestnet.id) {
+      promptedFor.current = null;
+      return;
+    }
+    if (promptedFor.current === chainId) return;
+    promptedFor.current = chainId;
+    switchChainAsync({ chainId: arcTestnet.id }).catch(() => {});
+  }, [isConnected, chainId, switchChainAsync]);
 
   if (!isConnected) {
     return (

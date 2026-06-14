@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { InsuranceBoard } from "@/components/insurance-board";
 import { TokenStack } from "@/components/token-stack";
 import { SiteFooter } from "@/components/site-footer";
+import { CreateDemoMarket } from "@/components/demo-controls";
 import { useMode } from "@/lib/web3/mode";
 
 export function MarketsDashboard() {
@@ -37,6 +38,21 @@ export function MarketsDashboard() {
       style={{ paddingBottom: 0 }}
     >
       <SiteHeader />
+
+      {/* Demo control: always-visible row to spin up a fresh cover market.
+          Unobtrusive and self-gated (handles no-operator internally). */}
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <CreateDemoMarket />
+      </div>
 
       <div
         style={{

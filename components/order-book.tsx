@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { Market } from "@/lib/markets";
 import { isMarketActive } from "@/lib/markets";
 import { usd, priceScaleToFraction, sharesToUsd } from "@/lib/format";
@@ -90,9 +91,11 @@ type OnchainOrderLike = {
 export function OrderBook({
   m,
   onPick,
+  headerAction,
 }: {
   m: Market;
   onPick?: (p: OrderPick) => void;
+  headerAction?: ReactNode;
 }) {
   const { book, price, live } = useLiveMarket(m);
   const useLive = isMarketActive(m) && live && book.orders.length > 0;
@@ -107,7 +110,10 @@ export function OrderBook({
     <div className="canary-ob">
       <div className="canary-ob-head">
         <span>Order book</span>
-        <span className="canary-ob-spread">spread {subCents(spread)}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
+          <span className="canary-ob-spread">spread {subCents(spread)}</span>
+          {headerAction}
+        </span>
       </div>
       <div className="canary-ob-rows">
         {asks.map((o, i) => (

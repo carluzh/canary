@@ -9,6 +9,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { ConnectWallet } from "@/components/connect-wallet";
 import { PriceChart } from "@/components/price-chart";
 import { OrderBook, type OrderPick } from "@/components/order-book";
+import { ProvideLiquidity } from "@/components/provide-liquidity";
 import { getMarket, marketTitle, isMarketActive, type Market } from "@/lib/markets";
 import { STABLES } from "@/lib/stables";
 import {
@@ -16,7 +17,11 @@ import {
   useMarketState,
   useMarketInfo,
   useUserPosition,
+  useYieldPosition,
+  useFeedPrice,
 } from "@/lib/contracts/markets-onchain";
+import { useDemoMarket, useCoverMarket } from "@/lib/web3/demo-market";
+import { CrashMarket } from "@/components/demo-controls";
 import { MarketState, CANARY_MARKET_ABI } from "@/lib/contracts/abi";
 import { DEFAULT_CHAIN_ID, RELAYED_MARKET_ADDRESS } from "@/lib/contracts/addresses";
 import { redeem } from "@/lib/contracts/canary";
@@ -50,8 +55,19 @@ function MarketDetailLive({
   // the first paint stays deterministic with the mock value and only the active
   // USDe market swaps to live reads once they resolve.
   const { price, liquidity, marketState } = useLiveMarket(m);
-  const { state: badgeState } = useMarketState(m.onchainMarket);
-  const { expiry: expirySec } = useMarketInfo(m.onchainMarket);
+  // Override-aware active cover-market address: a freshly-created demo market is
+  // reflected here so the state badge / expiry follow the new market (null for
+  // view-only symbols, which keeps the static behavior). Falls back to the
+  // static address while the override resolves.
+  const coverMarket = useCoverMarket(m.asset) ?? m.onchainMarket;
+  const { state: badgeState } = useMarketState(coverMarket);
+  const { expiry: expirySec } = useMarketInfo(coverMarket);
+
+  // Live underlying feed price (USDe/USD). Polls every 1s, so it visibly falls
+  // when the market is crashed on stage. Distinct from the cover cost / YES
+  // price shown in the stats grid.
+  const { feed } = useDemoMarket();
+  const { price: feedPrice } = useFeedPrice(live ? feed : null);
 
   // Live YES price drives YES / NO / implied-probability for the active market;
   // view-only keeps the mock priceYes.
@@ -95,12 +111,12 @@ function MarketDetailLive({
               )}
               <h1 className="canary-detail-title">{marketTitle(m)}</h1>
               {live ? <StatusBadge state={badgeState} /> : (
-                <span className="canary-soon">View only</span>
+                <span className="canary-soon">View Only</span>
               )}
             </div>
             <div className="canary-detail-stats">
-              <Stat label="YES (event)" value={cents(yesPrice)} />
-              <Stat label="NO (safe)" value={cents(1 - yesPrice)} />
+              <Stat label="YES event" value={cents(yesPrice)} />
+              <Stat label="NO safe" value={cents(1 - yesPrice)} />
               <Stat label="Implied prob." value={pct(yesPrice)} />
               <Stat label="Liquidity" value={usd(liq)} />
               <Stat label="Volume" value={usd(m.volume)} />
@@ -112,7 +128,11 @@ function MarketDetailLive({
             <PriceChart symbol={m.asset} />
           </div>
 
-          <OrderBook m={m} onPick={onPick} />
+          <OrderBook
+            m={m}
+            onPick={onPick}
+            headerAction={live ? <ProvideLiquidity m={m} /> : undefined}
+          />
 
           <section style={{ marginTop: 32 }}>
             <h2 className="canary-detail-h2">How this resolves</h2>
@@ -134,7 +154,7 @@ function MarketDetailLive({
                 <dt>Resolves YES</dt>
                 <dd>
                   feed at or below <strong>$0.95</strong> (5% below peg),
-                  sustained for <strong>15 min</strong>, any time before expiry
+                  sustained for <strong>5s (for Demo)</strong>, any time before expiry
                 </dd>
               </div>
               <div>
@@ -180,7 +200,25 @@ function MarketDetailLive({
             </div>
           )}
           <TradePanel m={m} forceExpert intent={intent} />
-          <PositionPanel m={m} live={live} marketState={marketState} />
+          <PositionPanel
+            m={m}
+            live={live}
+            marketState={marketState}
+            market={coverMarket}
+          />
+          {live && (
+            <div
+              style={{
+                marginTop: 14,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <FeedTicker price={feedPrice} />
+              <CrashMarket />
+            </div>
+          )}
         </aside>
       </div>
 
@@ -193,6 +231,52 @@ function MarketDetailLive({
       <SiteFooter />
       <div aria-hidden style={{ height: 30 }} />
     </main>
+  );
+}
+
+// Live underlying-feed ticker (USDe/USD). Clearly labeled as the FEED price so
+// it is not confused with the cover cost / YES price. Polls every 1s via
+// useFeedPrice, so it visibly falls when the depeg is triggered on stage. Below
+// the 0.95 peg threshold it picks up a subtle danger tint + hint.
+function FeedTicker({ price }: { price: number | null }) {
+  const belowPeg = price != null && price < 0.95;
+  const color = belowPeg ? "var(--c-no, #e0556b)" : "var(--c-ink)";
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+      <span
+        style={{
+          fontFamily: "var(--sans-stack)",
+          fontSize: 13,
+          fontWeight: 500,
+          color: "var(--c-muted)",
+        }}
+      >
+        USDe price
+      </span>
+      <span
+        style={{
+          fontFamily: "var(--sans-stack)",
+          fontVariantNumeric: "tabular-nums",
+          fontSize: 13,
+          fontWeight: 700,
+          color,
+        }}
+      >
+        {price != null ? `$${price.toFixed(2)}` : "$--"}
+      </span>
+      {belowPeg && (
+        <span
+          style={{
+            fontFamily: "var(--sans-stack)",
+            fontSize: 11,
+            fontWeight: 600,
+            color: "var(--c-no, #e0556b)",
+          }}
+        >
+          below peg
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -246,13 +330,22 @@ function PositionPanel({
   m,
   live,
   marketState,
+  market,
 }: {
   m: Market;
   live: boolean;
   marketState: MarketState;
+  // Override-aware active market address (resolves a freshly-created demo
+  // market). Position / state / redeem all target this rather than the static
+  // m.onchainMarket so the panel reflects the live override.
+  market: `0x${string}` | null;
 }) {
   const { address, isConnected } = useAccount();
-  const { yes, no } = useUserPosition(m.onchainMarket, address);
+  // Buy cover gives YES; underwrite mints a set and holds both YES + NO, all on
+  // this one market, so the full position reads from a single contract.
+  const { yes, no } = useUserPosition(market, address);
+  // Yield accrued to the held NO (non-zero only on a yield-enabled market).
+  const { claimable: yieldClaimable } = useYieldPosition(market, address);
 
   const { writeContract, data: txHash, isPending, reset } = useWriteContract();
   const { isLoading: isMining, isSuccess } = useWaitForTransactionReceipt({
@@ -281,6 +374,7 @@ function PositionPanel({
 
   const yesUsd = sharesToUsd(yes);
   const noUsd = sharesToUsd(no);
+  const claimableUsd = sharesToUsd(yieldClaimable);
   const hasPosition = yes > 0n || no > 0n;
 
   // Resolved + holding the winning side => redeemable.
@@ -293,14 +387,14 @@ function PositionPanel({
       : null;
   const holdsWinner =
     (winningSide === "yes" && yes > 0n) || (winningSide === "no" && no > 0n);
-  const canRedeem = resolved && holdsWinner && !!m.onchainMarket;
+  const canRedeem = resolved && holdsWinner && !!market;
 
   const busy = isPending || isMining;
   const onRedeem = () => {
-    if (!m.onchainMarket) return;
+    if (!market) return;
     // redeem(market) -> { address, functionName: "redeem", args: [] }; use the
     // typed ABI directly so wagmi's writeContract overload resolves cleanly.
-    const call = redeem(m.onchainMarket);
+    const call = redeem(market);
     writeContract({
       address: call.address,
       abi: CANARY_MARKET_ABI,
@@ -321,8 +415,11 @@ function PositionPanel({
       ) : (
         <>
           <div style={{ marginTop: 10 }}>
-            <PosRow label="YES shares (cover)" value={`$${yesUsd.toFixed(2)}`} />
-            <PosRow label="NO shares (underwrite)" value={`$${noUsd.toFixed(2)}`} />
+            <PosRow label="Cover (YES shares)" value={`$${yesUsd.toFixed(2)}`} />
+            <PosRow label="Underwriting (NO shares)" value={`$${noUsd.toFixed(2)}`} />
+            {yieldClaimable > 0n && (
+              <PosRow label="Yield claimable" value={`$${claimableUsd.toFixed(2)}`} />
+            )}
           </div>
 
           {!hasPosition && (

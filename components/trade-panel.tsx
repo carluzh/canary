@@ -8,19 +8,18 @@ import { type Market } from "@/lib/markets";
 import { cents, usd, sharesToUsd } from "@/lib/format";
 import { USDC_ADDRESS } from "@/lib/contracts/addresses";
 import { CANARY_MARKET_ABI } from "@/lib/contracts/abi";
-import { PRICE_SCALE, planUnderwrite, type OrderBook } from "@/lib/contracts/canary";
-import {
-  getOnchainMarket,
-  getUnderwriteMarket,
-  useOrderBook,
-  useYieldPosition,
-} from "@/lib/contracts/markets-onchain";
+import { PRICE_SCALE, type OrderBook } from "@/lib/contracts/canary";
+import { useOrderBook } from "@/lib/contracts/markets-onchain";
+import { useCoverMarket } from "@/lib/web3/demo-market";
 import { BlinkDeposit, type DepositRow } from "@/components/blink-deposit";
 import type { DepositCall, DepositPlan } from "@/lib/web3/blink";
 
-// Fill the cheapest asks on a given side for `shares` of exposure. Generalises
-// canary.ts planBuyCover to YES (buy cover) or NO; premium is what the buyer
-// pays in USDC base units. Empty calls => the book has no liquidity that side.
+// Taker UI: a single pill (Buy YES | Buy NO), market-buying against the live book
+// through the Blink deposit. Minting / providing liquidity lives in the separate
+// Provide Liquidity modal (off the order book), so this panel stays simple.
+
+// Fill the cheapest asks on a given side for `shares` of exposure. Empty calls =>
+// the book has no liquidity that side.
 function planBuySide(
   market: `0x${string}`,
   book: OrderBook,
@@ -52,31 +51,17 @@ function planBuySide(
 
 function toShares(value: number): bigint {
   if (!Number.isFinite(value) || value <= 0) return 0n;
-  // 6-dec base units; clamp the string so parseUnits never throws.
   return parseUnits(value.toFixed(6), 6);
 }
 
 // Total remaining depth on a given sell side of the live book, in 6-dec base
-// units. For buy-cover we sum the YES asks: a buy of at most this many shares
-// always fills, so the demo never dead-ends on "no liquidity".
+// units. A buy of at most this many shares always fills.
 function sellDepth(book: OrderBook, yes: boolean): bigint {
   let depth = 0n;
   for (const o of book.orders) {
     if (o.isYes === yes && !o.isBuy && o.remaining > 0n) depth += o.remaining;
   }
   return depth;
-}
-
-// premiumPrice is a uint64 in (0, 1e6). Default 1.5% = 15000. Returns null when
-// the input is out of range so the underwrite plan stays disabled.
-const PREMIUM_MAX = 1_000_000; // 1e6 exclusive
-function parsePremiumPrice(raw: string): bigint | null {
-  const pct = parseFloat(raw);
-  if (!Number.isFinite(pct)) return null;
-  // input is a percentage (e.g. 1.5 -> 0.015 -> 15000 scaled).
-  const scaled = Math.round((pct / 100) * PREMIUM_MAX);
-  if (scaled <= 0 || scaled >= PREMIUM_MAX) return null;
-  return BigInt(scaled);
 }
 
 export function TradePanel({
@@ -97,16 +82,12 @@ export function TradePanel({
   defaultAmount?: number;
 }) {
   const { mode } = useMode();
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const [side, setSide] = useState<"yes" | "no">("yes");
   const [amount, setAmount] = useState(() =>
     defaultAmount != null ? String(defaultAmount) : ""
   );
   const [open, setOpen] = useState(false);
-  // Buy cover (default) vs. underwrite the yield market.
-  const [tradeMode, setTradeMode] = useState<"buy" | "underwrite">("buy");
-  // Premium the underwriter asks for, as a percentage. 1.5% = 15000 scaled.
-  const [premiumPct, setPremiumPct] = useState("1.5");
 
   // Sync from an order-book pick.
   useEffect(() => {
@@ -115,22 +96,11 @@ export function TradePanel({
     if (intent.amount != null) setAmount(String(Math.round(intent.amount)));
   }, [intent]);
 
-  const onchainMarket = getOnchainMarket(m.asset);
+  // Override-aware active market address: a freshly-created demo market is used
+  // for the buy/fill and the order-book read instead of the static default.
+  const onchainMarket = useCoverMarket(m.asset);
   const { book, refetch } = useOrderBook(onchainMarket);
   const live = !!onchainMarket;
-
-  // Underwrite targets the YIELD market (mintSets + sell YES), NOT the demo
-  // buy-cover book. Enabled only where a yield market exists (active USDe).
-  const yieldMarket = getUnderwriteMarket(m.asset);
-  const canUnderwrite = !!yieldMarket;
-  const yieldPos = useYieldPosition(yieldMarket, address);
-
-  // Underwrite is an expert affordance; never surface it in the simple modal.
-  const showUnderwrite = !forceSimple && (forceExpert || mode === "expert") && canUnderwrite;
-  // If the panel can't underwrite, never leave the user stuck in that mode.
-  const effMode: "buy" | "underwrite" =
-    showUnderwrite && tradeMode === "underwrite" ? "underwrite" : "buy";
-  const underwriting = effMode === "underwrite";
 
   // Prefill the cover amount when arriving from a card's "Cover $X" option
   // (e.g. /market/usdt?cover=1000).
@@ -145,91 +115,45 @@ export function TradePanel({
   const buyYes = effSide === "yes";
   const price = buyYes ? m.priceYes : 1 - m.priceYes;
 
-  // simple: input = desired cover (payout); premium = cover × price.
-  // expert: input = USDC spent; shares = spent ÷ price.
+  // simple: input = desired cover (payout). expert: input = USDC spent.
   const displayPremium = simple ? n * m.priceYes : n;
   const shares = simple ? n : price > 0 ? n / price : 0;
 
-  // Buy-cover clamp: the most cover the seeded YES asks can fill, in USD. A demo
-  // buy of up to this much always fills, so we cap rather than dead-end on a bare
-  // "not enough liquidity". Only meaningful on the buy side (YES asks consumed).
+  // Clamp the buy to the live depth so a demo buy always fills.
   const maxFillable = useMemo(
     () => (live ? sharesToUsd(sellDepth(book, buyYes)) : 0),
     [live, book, buyYes]
   );
-  // Desired cover exposure (shares) before clamping.
-  const wantShares = simple ? n : price > 0 ? n / price : 0;
-  const overDepth =
-    !underwriting && live && maxFillable > 0 && wantShares > maxFillable + 1e-6;
+  const wantShares = shares;
+  const overDepth = live && maxFillable > 0 && wantShares > maxFillable + 1e-6;
+  const filled = live && maxFillable > 0 ? Math.min(shares, maxFillable) : shares;
 
-  // Parsed underwrite premium price (uint64, scaled by 1e6). null when invalid.
-  const premiumPrice = useMemo(() => parsePremiumPrice(premiumPct), [premiumPct]);
-
-  // Executable plan: either buy-cover against the demo book (clamped to depth)
-  // or underwrite the yield market (mintSets + sell YES at premiumPrice).
+  // Executable buy plan against the live book (clamped to depth).
   const plan = useMemo<DepositPlan | null>(() => {
-    if (underwriting) {
-      if (!yieldMarket || premiumPrice == null) return null;
-      // input is USDC collateral to lock into a complete set (6-dec base units).
-      const collateral = toShares(n);
-      if (collateral === 0n) return null;
-      const calls = planUnderwrite(yieldMarket, collateral, premiumPrice) as DepositCall[];
-      // amount approved/escrowed is the mintSets collateral, NOT a premium.
-      return { token: USDC_ADDRESS, spender: yieldMarket, amount: collateral, calls };
-    }
     if (!live || !onchainMarket) return null;
-    // Clamp the requested shares to the seeded depth so the fill always lands.
     const capped = maxFillable > 0 ? Math.min(wantShares, maxFillable) : wantShares;
     const want = toShares(capped);
     if (want === 0n) return null;
-    const { calls, premium, filled } = planBuySide(onchainMarket, book, want, buyYes);
-    if (calls.length === 0 || filled === 0n) return null;
+    const { calls, premium, filled: f } = planBuySide(onchainMarket, book, want, buyYes);
+    if (calls.length === 0 || f === 0n) return null;
     return { token: USDC_ADDRESS, spender: onchainMarket, amount: premium, calls };
-  }, [
-    underwriting,
-    yieldMarket,
-    premiumPrice,
-    n,
-    live,
-    onchainMarket,
-    book,
-    wantShares,
-    maxFillable,
-    buyYes,
-  ]);
+  }, [live, onchainMarket, book, wantShares, maxFillable, buyYes]);
 
-  // Prefer the real premium/collateral from the plan once we have it.
   const payValue = plan ? `${usd(Number(plan.amount) / 1e6)} USDC` : `$${displayPremium.toFixed(2)}`;
 
-  const rows: DepositRow[] = underwriting
+  const rows: DepositRow[] = simple
     ? [
-        { label: "Collateral", value: usd(n) },
-        { label: "Sell YES at", value: `${(premiumPrice != null ? Number(premiumPrice) / 1e4 : 0).toFixed(2)}%` },
-        { label: "Keep", value: "NO side (earns yield)" },
-      ]
-    : simple
-    ? [
-        { label: "Cover amount", value: usd(n) },
-        { label: "Max payout", value: usd(shares) },
+        { label: "Cover amount", value: usd(filled) },
+        { label: "Max payout", value: usd(filled) },
         { label: "If no depeg", value: "Premium only" },
       ]
     : [
         { label: "Side", value: effSide.toUpperCase() },
         { label: "Avg price", value: cents(price) },
-        { label: `${effSide.toUpperCase()} shares`, value: shares.toFixed(2) },
+        { label: `${effSide.toUpperCase()} shares`, value: filled.toFixed(2) },
       ];
 
-  const disabledReason = underwriting
-    ? !canUnderwrite
-      ? `Underwriting is enabled for USDe in this demo. ${m.asset} market is coming soon.`
-      : premiumPrice == null
-      ? "Set a premium between 0% and 100%."
-      : !plan
-      ? n > 0
-        ? "Enter a valid collateral amount to underwrite."
-        : "Enter an amount to deposit."
-      : undefined
-    : !live
+  const disabledReason = !live
     ? `Live deposit is enabled for USDe in this demo. ${m.asset} market is coming soon.`
     : overDepth
     ? `Max ${usd(maxFillable)} available at current depth.`
@@ -241,37 +165,7 @@ export function TradePanel({
 
   return (
     <div className="canary-panel">
-      {/* Buy cover (default) vs. underwrite the yield market. Expert only, and
-          only where a yield market exists. Keeps buy-cover the default. */}
-      {showUnderwrite && (
-        <div className="canary-toggle-buysell" style={{ marginBottom: 14 }}>
-          <button data-active={!underwriting} onClick={() => setTradeMode("buy")}>
-            Buy cover
-          </button>
-          <button data-active={underwriting} onClick={() => setTradeMode("underwrite")}>
-            Underwrite
-          </button>
-        </div>
-      )}
-
-      {underwriting ? (
-        <div style={{ marginBottom: 14 }}>
-          <div
-            style={{
-              marginBottom: 6,
-              fontFamily: "var(--sans-stack)",
-              fontWeight: 600,
-              fontSize: 13,
-            }}
-          >
-            Underwrite cover
-          </div>
-          <div style={{ fontSize: 13, color: "var(--c-muted)" }}>
-            Deposit collateral, sell the YES side, and keep NO. You earn the
-            premium if there is no depeg.
-          </div>
-        </div>
-      ) : simple ? (
+      {simple ? (
         <div style={{ marginBottom: 14 }}>
           <div
             style={{
@@ -299,11 +193,7 @@ export function TradePanel({
       )}
 
       <label className="canary-stat-label">
-        {underwriting
-          ? "Collateral (USDC)"
-          : simple
-          ? "Cover amount (USDC)"
-          : "Amount (USDC)"}
+        {simple ? "Cover amount (USDC)" : "Amount (USDC)"}
       </label>
       <input
         className="canary-input"
@@ -314,71 +204,36 @@ export function TradePanel({
         style={{ margin: "6px 0 14px" }}
       />
 
-      {underwriting ? (
-        <>
-          <label className="canary-stat-label">Premium asked (%)</label>
-          <input
-            className="canary-input"
-            inputMode="decimal"
-            placeholder="1.5"
-            value={premiumPct}
-            onChange={(e) => setPremiumPct(e.target.value.replace(/[^0-9.]/g, ""))}
-            style={{ margin: "6px 0 14px" }}
-          />
-          <Row label="Collateral" value={usd(n)} />
-          <Row
-            label="Sell YES at"
-            value={`${(premiumPrice != null ? Number(premiumPrice) / 1e4 : 0).toFixed(2)}%`}
-            bold
-          />
-          {(yieldPos.pending > 0n || yieldPos.claimable > 0n) && (
-            <div className="canary-blink-reason" style={{ marginTop: 8 }}>
-              Your idle collateral earns yield. Pending {usd(sharesToUsd(yieldPos.pending))},
-              claimable {usd(sharesToUsd(yieldPos.claimable))}.
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <Row
-            label={simple ? "Premium" : "Avg price"}
-            value={simple ? payValue : cents(price)}
-          />
-          <Row
-            label={simple ? "Max payout" : `${effSide.toUpperCase()} shares`}
-            value={simple ? `$${shares.toFixed(2)}` : shares.toFixed(2)}
-            bold
-          />
-        </>
-      )}
+      <Row
+        label={simple ? "Premium" : "Avg price"}
+        value={simple ? payValue : cents(price)}
+      />
+      <Row
+        label={simple ? "Max payout" : `${effSide.toUpperCase()} shares`}
+        value={simple ? `$${filled.toFixed(2)}` : filled.toFixed(2)}
+        bold
+      />
 
       <div style={{ marginTop: 14 }}>
         {!isConnected ? (
           <div className="canary-banner">
-            Connect your wallet to{" "}
-            {underwriting ? "underwrite" : simple ? "buy cover" : "trade"}.
+            Connect your wallet to {simple ? "buy cover" : "trade"}.
           </div>
         ) : (
           <button
-            className={`canary-btn canary-btn--block ${
-              underwriting ? "canary-btn--no" : buyYes ? "canary-btn--yes" : "canary-btn--no"
-            }`}
+            className={`canary-btn canary-btn--block ${buyYes ? "canary-btn--yes" : "canary-btn--no"}`}
             onClick={() => setOpen(true)}
             disabled={!plan}
             title={disabledReason}
           >
-            {underwriting
-              ? "Underwrite"
-              : !live
+            {!live
               ? "Market not Live."
               : simple
               ? "Buy protection"
               : `Buy ${effSide.toUpperCase()}`}
           </button>
         )}
-        {/* not-live ("coming soon") is surfaced as a callout above the panel;
-            inline reasons are only the live amount/liquidity/cap hints */}
-        {isConnected && (underwriting ? canUnderwrite : live) && disabledReason && (
+        {isConnected && live && disabledReason && (
           <div className="canary-blink-reason" style={{ marginTop: 8 }}>
             {disabledReason}
           </div>
@@ -389,13 +244,13 @@ export function TradePanel({
         open={open}
         onClose={() => setOpen(false)}
         onDone={refetch}
-        title={underwriting ? "Underwrite cover" : simple ? "Buy cover" : `Buy ${effSide.toUpperCase()}`}
+        title={simple ? "Buy cover" : `Buy ${effSide.toUpperCase()}`}
         assetSymbol={m.asset}
         assetColor="var(--c-accent)"
         rows={rows}
-        payLabel={underwriting ? "You deposit" : "You pay"}
+        payLabel="You pay"
         payValue={payValue}
-        cta={underwriting ? "Underwrite" : simple ? "Buy cover" : `Buy ${effSide.toUpperCase()}`}
+        cta={simple ? "Buy cover" : `Buy ${effSide.toUpperCase()}`}
         plan={plan}
         disabledReason={disabledReason}
       />

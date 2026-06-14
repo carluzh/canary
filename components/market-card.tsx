@@ -47,7 +47,7 @@ export function MarketCard({ m }: { m: Market }) {
           <div style={{ minWidth: 0 }}>
             <div className="canary-mm-name">
               {marketTitle(m)}
-              {!active && <span className="canary-soon">View only</span>}
+              {!active && <span className="canary-soon">View Only</span>}
             </div>
             <div className="canary-mm-sub">
               {stable?.name ?? m.asset} · {timeLeft(m.expiry)}

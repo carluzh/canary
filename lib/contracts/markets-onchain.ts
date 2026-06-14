@@ -26,6 +26,7 @@ import {
 import { priceYes, type OrderBook, type OnchainOrder } from "./canary";
 import { bookLiquidityUsd } from "@/lib/format";
 import { isMarketActive, type Market } from "@/lib/markets";
+import { useCoverMarket } from "@/lib/web3/demo-market";
 
 // Re-export the pure mapping so existing importers (trade-panel.tsx) keep
 // working against this module.
@@ -33,6 +34,52 @@ export { ONCHAIN_MARKETS, getOnchainMarket, hasOnchainMarket, getUnderwriteMarke
 export { RELAYED_MARKET_ADDRESS };
 
 const REFETCH_MS = 10_000;
+
+// Minimal Chainlink-style aggregator ABI (8-dec) — just the latest round, so we
+// can poll the demo feed snappily and show the crash live.
+const FEED_ABI = [
+  {
+    type: "function",
+    name: "latestRoundData",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      { name: "roundId", type: "uint80" },
+      { name: "answer", type: "int256" },
+      { name: "startedAt", type: "uint256" },
+      { name: "updatedAt", type: "uint256" },
+      { name: "answeredInRound", type: "uint80" },
+    ],
+  },
+] as const;
+
+// Live feed price for the override-aware demo feed. Polls latestRoundData()
+// every 1s so the crash is visible in real time. price = answer / 1e8.
+export function useFeedPrice(feed: `0x${string}` | null): {
+  price: number | null;
+  roundId: bigint;
+  updatedAt: number;
+  isLoading: boolean;
+} {
+  const { data, isLoading } = useReadContract({
+    address: feed ?? undefined,
+    abi: FEED_ABI,
+    functionName: "latestRoundData",
+    chainId: DEFAULT_CHAIN_ID,
+    query: { enabled: !!feed, refetchInterval: 1000 },
+  });
+
+  const round = data as
+    | readonly [bigint, bigint, bigint, bigint, bigint]
+    | undefined;
+
+  return {
+    price: round ? Number(round[1]) / 1e8 : null,
+    roundId: round ? round[0] : 0n,
+    updatedAt: round ? Number(round[3]) : 0,
+    isLoading: !!feed && isLoading,
+  };
+}
 
 // Live order book for a market, shaped for the planners in canary.ts. Returns an
 // empty book until the read resolves; `isLoading` lets the UI show a skeleton.
@@ -156,7 +203,11 @@ export function useYieldPosition(
   market: `0x${string}` | null,
   address?: `0x${string}`
 ): { pending: bigint; claimable: bigint; isLoading: boolean } {
-  const enabled = isYieldMarket(market) && !!address;
+  // Read whenever we have a market + address. The yield view fns revert on a
+  // non-yield market, but useReadContracts (allowFailure) surfaces those as
+  // failures -> 0n, so this is safe for any active market (incl. freshly-created
+  // yield markets that are not the static yield-market address).
+  const enabled = !!market && !!address;
   const { data, isLoading } = useReadContracts({
     contracts: enabled
       ? [
@@ -198,8 +249,12 @@ export function useLiveMarket(m: Market): {
   live: boolean;
   isLoading: boolean;
 } {
-  const active = isMarketActive(m);
-  const target = active ? m.onchainMarket : null;
+  // Override-aware cover-market resolution: useCoverMarket returns the
+  // (possibly freshly-created) address for active symbols and null otherwise,
+  // so view-only markets keep the mock passthrough below. Hooks are called
+  // unconditionally to preserve hook-call order, then we branch on `active`.
+  const target = useCoverMarket(m.asset);
+  const active = isMarketActive(m) && target !== null;
 
   const { book, isLoading: bookLoading } = useOrderBook(target);
   const { state, isLoading: stateLoading } = useMarketState(target);

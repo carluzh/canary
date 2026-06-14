@@ -121,6 +121,16 @@ body {
 .canary-btn--accent:hover {
   filter: none;
 }
+/* Blink primary action: lime fill + dark ink (the blink.cash look) */
+.canary-btn--blink {
+  background: var(--blink-lime, #d8e830);
+  color: var(--blink-ink, #1a2a00);
+  font-weight: 600;
+  border: none;
+}
+.canary-btn--blink:hover {
+  filter: brightness(1.05);
+}
 /* side-colored buy buttons (trade panel), matching the order book */
 .canary-btn--yes {
   background: #26d07c;
@@ -488,6 +498,14 @@ body {
   border-radius: 6px;
   color: var(--c-muted);
   background: transparent;
+  transition: background 140ms ease, color 140ms ease;
+}
+/* generic selected state (e.g. Buy cover / Underwrite, which have no data-side);
+   the YES/NO rules below override this with their colors */
+.canary-toggle-buysell button[data-active="true"] {
+  background: var(--c-ink);
+  color: var(--c-bg);
+  font-weight: 600;
 }
 .canary-toggle-buysell button[data-active="true"][data-side="yes"] {
   background: #26d07c;
@@ -985,6 +1003,37 @@ html {
     var(--c-border) 0 6px,
     transparent 6px 12px
   );
+}
+
+/* open-cover position card (Opened Insurance) — links to its market */
+.canary-position-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  background: var(--c-surface);
+  padding: 16px;
+  color: var(--c-ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+.canary-position-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand, #ee9259) 55%, var(--c-border));
+}
+.canary-position-pill {
+  flex-shrink: 0;
+  font-family: var(--sans-stack);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.3);
 }
 
 .canary-stable-card {
@@ -2052,6 +2101,12 @@ button.canary-ob-row[data-side="bid"]:hover {
 }
 .canary-blink-modal {
   position: relative;
+  /* Blink brand palette (from blink.cash): lime mascot on sky blue. Lime drives
+     fills + the primary CTA; blue marks in-progress and links. Both are used as
+     solid fills or low-alpha tints so they read on the light and expert themes. */
+  --blink-lime: #d8e830;
+  --blink-blue: #40a8f8;
+  --blink-ink: #1a2a00; /* dark ink for text sitting on lime */
   width: 100%;
   max-width: 440px;
   max-height: calc(100vh - 40px);
@@ -2059,9 +2114,8 @@ button.canary-ob-row[data-side="bid"]:hover {
   box-sizing: border-box;
   background: var(--c-surface-2);
   color: var(--c-ink);
-  /* a hairline of the funded asset's brand tint reads as "branded" without
-     fighting the warm accent */
-  border: 1px solid color-mix(in srgb, var(--brand, #ee9259) 30%, var(--c-border));
+  /* a hairline of Blink lime reads as "branded" without fighting the app accent */
+  border: 1px solid color-mix(in srgb, var(--blink-lime) 38%, var(--c-border));
   border-radius: 18px;
   padding: 20px;
   box-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
@@ -2069,22 +2123,50 @@ button.canary-ob-row[data-side="bid"]:hover {
   animation: canary-blink-modal-in 220ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-/* head: Blink lockup (left) + close (right) */
+/* head: Blink logo + lockup (left) + close (right) — mirrors .canary-modal-head */
 .canary-blink-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 11px;
   margin-bottom: 16px;
 }
+/* circular Blink mascot, same treatment as the asset/token logos */
+.canary-blink-logo {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--c-border);
+}
+.canary-blink-lockup {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.canary-blink-word {
+  font-family: var(--font-radley);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--c-ink);
+}
+.canary-blink-sub {
+  font-family: var(--sans-stack);
+  font-size: 12.5px;
+  color: var(--c-faint);
+}
 .canary-blink-x {
+  margin-left: auto;
+  align-self: flex-start;
   flex-shrink: 0;
   width: 28px;
   height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 20px;
   line-height: 1;
   border: none;
   border-radius: 8px;
@@ -2098,45 +2180,6 @@ button.canary-ob-row[data-side="bid"]:hover {
   color: var(--c-ink);
 }
 
-/* Blink brand lockup — "Blink" prominent + a lightning glyph */
-.canary-blink-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.canary-blink-bolt {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  border-radius: 8px;
-  /* lightning sits in a warm accent chip so the brand reads instantly */
-  background: linear-gradient(150deg, #ee9259, #eedbaf);
-  color: #1e1e1e;
-  box-shadow: 0 2px 10px rgba(238, 146, 89, 0.35);
-}
-.canary-blink-word {
-  font-family: var(--font-radley);
-  font-weight: 700;
-  font-size: 19px;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  color: var(--c-ink);
-}
-.canary-blink-sub {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--c-faint);
-  /* small separator dot before the tagline */
-  padding-left: 8px;
-  margin-left: 2px;
-  border-left: 1px solid var(--c-border);
-}
-
 /* title row: action name + asset chip */
 .canary-blink-title {
   display: flex;
@@ -2148,16 +2191,23 @@ button.canary-ob-row[data-side="bid"]:hover {
   line-height: 1.2;
   margin-bottom: 14px;
 }
-.canary-blink-chip {
-  font-family: var(--font-mono);
-  font-size: 11px;
+/* asset on the title row: right-aligned icon + ticker (no pill) */
+.canary-blink-asset {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sans-stack);
   font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 3px 8px;
-  border-radius: 999px;
-  color: color-mix(in srgb, var(--brand, #ee9259) 88%, var(--c-ink));
-  background: color-mix(in srgb, var(--brand, #ee9259) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--brand, #ee9259) 34%, transparent);
+  font-size: 14px;
+  color: var(--c-ink);
+}
+.canary-blink-asset-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 /* summary list */
@@ -2184,11 +2234,13 @@ button.canary-ob-row[data-side="bid"]:hover {
 .canary-blink-row + .canary-blink-row {
   border-top: 1px solid var(--c-border);
 }
-.canary-blink-row .canary-mono {
+/* figures use the app's normal sans (not mono), with aligned digits */
+.canary-blink-val {
+  font-family: var(--sans-stack);
   color: var(--c-ink);
   font-variant-numeric: tabular-nums;
 }
-/* the pay row is the figure that matters — emphasised */
+/* the pay row is the figure that matters — emphasised, and red (it's a debit) */
 .canary-blink-pay {
   margin-top: 2px;
   padding-top: 10px;
@@ -2196,10 +2248,10 @@ button.canary-ob-row[data-side="bid"]:hover {
   font-weight: 600;
   color: var(--c-ink);
 }
-.canary-blink-pay .canary-mono {
+.canary-blink-pay .canary-blink-val {
   font-weight: 700;
   font-size: 15px;
-  color: color-mix(in srgb, var(--brand, #ee9259) 80%, var(--c-ink));
+  color: #e5484d;
 }
 
 /* 3-node progress rail: Approve → Fund → Confirmed */
@@ -2252,21 +2304,21 @@ button.canary-ob-row[data-side="bid"]:hover {
 .canary-blink-step[data-status="pending"] .canary-blink-stepdot {
   opacity: 0.85;
 }
-/* active = brand-tinted ring holding a spinner */
+/* active = Blink-blue ring holding a spinner (blue reads on light + expert) */
 .canary-blink-step[data-status="active"] .canary-blink-stepdot {
-  border-color: color-mix(in srgb, var(--brand, #ee9259) 55%, transparent);
-  background: color-mix(in srgb, var(--brand, #ee9259) 12%, transparent);
-  color: var(--c-accent);
+  border-color: color-mix(in srgb, var(--blink-blue) 60%, transparent);
+  background: color-mix(in srgb, var(--blink-blue) 14%, transparent);
+  color: var(--blink-blue);
 }
 .canary-blink-step[data-status="active"] .canary-blink-steplabel {
   color: var(--c-ink);
   font-weight: 600;
 }
-/* done = accent fill + check */
+/* done = Blink-lime fill + dark check */
 .canary-blink-step[data-status="done"] .canary-blink-stepdot {
   border-color: transparent;
-  background: #ee9259;
-  color: #ffffff;
+  background: var(--blink-lime);
+  color: var(--blink-ink);
 }
 .canary-blink-step[data-status="done"] .canary-blink-steplabel {
   color: var(--c-muted);
@@ -2309,7 +2361,7 @@ button.canary-ob-row[data-side="bid"]:hover {
   font-weight: 500;
   text-align: center;
   text-decoration: none;
-  color: color-mix(in srgb, var(--brand, #ee9259) 78%, var(--c-ink));
+  color: color-mix(in srgb, var(--blink-blue) 82%, var(--c-ink));
   transition: filter 140ms ease;
 }
 .canary-blink-link:hover {
@@ -2359,13 +2411,11 @@ button.canary-ob-row[data-side="bid"]:hover {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-family: var(--sans-stack);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   white-space: nowrap;
-  padding: 3px 8px;
+  padding: 3px 9px;
   border-radius: 999px;
   color: var(--c-muted);
   background: color-mix(in srgb, var(--c-ink) 5%, transparent);

@@ -174,7 +174,7 @@ export function StableCard({ s }: { s: Stable }) {
             </span>
           </span>
         ) : (
-          <span className="canary-soon">View only</span>
+          <span className="canary-soon">View Only</span>
         )}
       </div>
 

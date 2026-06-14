@@ -1,66 +1,85 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { useAccount } from "wagmi";
 import { STABLES } from "@/lib/stables";
-import { useStableHoldings } from "@/lib/web3/holdings";
+import { isActiveSymbol } from "@/lib/contracts/active-markets";
 import { StableCard } from "@/components/stable-card";
+import { PositionCard } from "@/components/position-card";
 
 export function InsuranceBoard({ selected }: { selected: Set<string> }) {
-  const { isConnected } = useAccount();
-  const { holdings, isLoading } = useStableHoldings();
+  const { isConnected, address } = useAccount();
 
-  // Token-stack filter: empty selection shows everything. Filter first, then
-  // apply the Proposed/Available (wallet) split to the active set.
+  // Token-stack filter: empty selection shows everything.
   const filterActive = selected.size > 0;
-  const isActive = (sym: string) => !filterActive || selected.has(sym);
-  const shown = STABLES.filter((s) => isActive(s.symbol));
+  const isShown = (sym: string) => !filterActive || selected.has(sym);
+  const shown = STABLES.filter((s) => isShown(s.symbol));
 
-  const held = shown.filter((s) => (holdings[s.symbol] ?? 0) > 0);
-  const heldSet = new Set(held.map((s) => s.symbol));
-  const rest = shown.filter((s) => !heldSet.has(s.symbol));
+  // Only active (live-contract) markets can hold a position. Each PositionCard
+  // self-hides until it has one and reports presence so we can show the count
+  // and drop that market from "Available" (no duplication).
+  const activeShown = shown.filter((s) => isActiveSymbol(s.symbol));
+  const [positioned, setPositioned] = useState<Set<string>>(() => new Set());
+  const report = useCallback((sym: string, has: boolean) => {
+    setPositioned((prev) => {
+      if (has === prev.has(sym)) return prev;
+      const next = new Set(prev);
+      if (has) next.add(sym);
+      else next.delete(sym);
+      return next;
+    });
+  }, []);
 
-  // While filtering, drop a section entirely when it has no matching tokens.
-  const showProposed = !filterActive || held.length > 0;
-  const showAvailable = rest.length > 0;
+  const posCount = positioned.size;
+  // Available lists every market you can buy — including one you already hold a
+  // position in, so you can always top up or revisit it.
+  const showOpened = !filterActive || activeShown.length > 0;
+  const showAvailable = shown.length > 0;
 
   return (
     <>
-      {showProposed && (
+      {showOpened && (
         <section>
           <h2 className="canary-segment-title">
-            Proposed Insurance
-            <span className="canary-segment-count">{held.length} Markets</span>
+            Opened Insurance
+            <span className="canary-segment-count">
+              {posCount} {posCount === 1 ? "Position" : "Positions"}
+            </span>
           </h2>
           {!isConnected ? (
             <div className="canary-banner">
-              Connect your wallet to see cover proposed for the stablecoins you hold.
+              Connect your wallet to see the cover you&apos;ve opened.
             </div>
-          ) : isLoading ? (
-            <div className="canary-banner">Reading your balances…</div>
-          ) : held.length === 0 ? (
+          ) : posCount === 0 ? (
             <div className="canary-banner">
-              No insurable stablecoins found in your wallet. Browse all available cover below.
+              No open cover yet. Buy protection below and your position shows up here.
             </div>
-          ) : (
+          ) : null}
+          {isConnected && (
             <div className="canary-grid">
-              {held.map((s) => (
-                <StableCard key={s.symbol} s={s} />
+              {activeShown.map((s) => (
+                <PositionCard
+                  key={s.symbol}
+                  stable={s}
+                  address={address}
+                  onReport={report}
+                />
               ))}
             </div>
           )}
         </section>
       )}
 
-      {showProposed && showAvailable && <div className="canary-divider" />}
+      {showOpened && showAvailable && <div className="canary-divider" />}
 
       {showAvailable && (
         <section>
           <h2 className="canary-segment-title">
             Available Insurance
-            <span className="canary-segment-count">{rest.length} Markets</span>
+            <span className="canary-segment-count">{shown.length} Markets</span>
           </h2>
           <div className="canary-grid">
-            {rest.map((s) => (
+            {shown.map((s) => (
               <StableCard key={s.symbol} s={s} />
             ))}
           </div>

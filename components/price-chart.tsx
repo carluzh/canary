@@ -7,8 +7,11 @@ import {
   ColorType,
   CrosshairMode,
   type CandlestickData,
+  type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { useDemoMarket, useCoverMarket } from "@/lib/web3/demo-market";
+import { useFeedPrice } from "@/lib/contracts/markets-onchain";
 
 // Interactive price chart (TradingView lightweight-charts): wheel-zoom, drag-pan
 // and crosshair hover come for free; we add timeframe switching and a live OHLC
@@ -68,6 +71,20 @@ export function PriceChart({ symbol }: { symbol: string }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [tf, setTf] = useState<string>("1D");
 
+  // For the ACTIVE USDe market we anchor the latest candle to the live feed so a
+  // crash shows up as a falling line. View-only symbols stay fully synthetic:
+  // useCoverMarket() returns null for them, so the feed read is disabled and the
+  // chart renders deterministic sample data unchanged.
+  const coverMarket = useCoverMarket(symbol);
+  const { feed } = useDemoMarket();
+  const liveFeed = coverMarket ? feed : null;
+  const { price: livePrice } = useFeedPrice(liveFeed);
+
+  // Series handle + the last synthetic bar, shared between the build effect and
+  // the live-snap effect so we can update the final candle in place.
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const lastBarRef = useRef<CandlestickData | null>(null);
+
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
@@ -106,8 +123,33 @@ export function PriceChart({ symbol }: { symbol: string }) {
     series.setData(data);
     chart.timeScale().fitContent();
 
-    return () => chart.remove();
+    seriesRef.current = series;
+    lastBarRef.current = data.length ? { ...data[data.length - 1] } : null;
+
+    return () => {
+      seriesRef.current = null;
+      lastBarRef.current = null;
+      chart.remove();
+    };
   }, [symbol, tf]);
+
+  // On each 1s poll, snap the latest candle's close to the live feed price for
+  // the active market (high/low widen to contain it). This is purely additive:
+  // when livePrice is null (view-only or pre-resolve) we leave the bar alone.
+  useEffect(() => {
+    const series = seriesRef.current;
+    const base = lastBarRef.current;
+    if (!series || !base || livePrice == null) return;
+
+    const close = Math.max(0.01, Math.min(0.99, livePrice));
+    const next: CandlestickData = {
+      ...base,
+      close,
+      high: Math.min(0.99, Math.max(base.high, close)),
+      low: Math.max(0.01, Math.min(base.low, close)),
+    };
+    series.update(next);
+  }, [livePrice]);
 
   return (
     <div className="canary-chart">

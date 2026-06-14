@@ -84,31 +84,45 @@ export function BlinkDeposit(props: BlinkDepositProps) {
         style={{ ["--brand"]: props.assetColor } as CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Blink, front and centre */}
+        {/* Blink, front and centre — same head pattern as the cover modal:
+            circular logo + title/sub, close on the right */}
         <div className="canary-blink-head">
-          <BlinkBadge />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/blink.jpg" alt="Blink" className="canary-blink-logo" />
+          <div className="canary-blink-lockup">
+            <span className="canary-blink-word">Blink</span>
+            <span className="canary-blink-sub">Instant deposit</span>
+          </div>
           {!busy && (
             <button className="canary-blink-x" onClick={onClose} aria-label="Close">
-              ✕
+              ×
             </button>
           )}
         </div>
 
         <div className="canary-blink-title">
           {props.title}
-          <span className="canary-blink-chip">{props.assetSymbol}</span>
+          <span className="canary-blink-asset">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/tokens/${props.assetSymbol.toLowerCase()}.png`}
+              alt=""
+              className="canary-blink-asset-icon"
+            />
+            {props.assetSymbol}
+          </span>
         </div>
 
         <div className="canary-blink-rows">
           {props.rows.map((r) => (
             <div key={r.label} className="canary-blink-row">
               <span>{r.label}</span>
-              <span className="canary-mono">{r.value}</span>
+              <span className="canary-blink-val">{r.value}</span>
             </div>
           ))}
           <div className="canary-blink-row canary-blink-pay">
             <span>{props.payLabel}</span>
-            <span className="canary-mono">{props.payValue}</span>
+            <span className="canary-blink-val">{props.payValue}</span>
           </div>
         </div>
 
@@ -133,7 +147,7 @@ export function BlinkDeposit(props: BlinkDepositProps) {
                 View on Arcscan →
               </a>
             )}
-            <button className="canary-btn canary-btn--accent canary-btn--block" onClick={onClose}>
+            <button className="canary-btn canary-btn--blink canary-btn--block" onClick={onClose}>
               Done
             </button>
           </div>
@@ -141,7 +155,7 @@ export function BlinkDeposit(props: BlinkDepositProps) {
           <div className="canary-blink-doneblock">
             <div className="canary-blink-err">{state.error}</div>
             <button
-              className="canary-btn canary-btn--accent canary-btn--block"
+              className="canary-btn canary-btn--blink canary-btn--block"
               onClick={run}
               disabled={!plan}
             >
@@ -151,7 +165,7 @@ export function BlinkDeposit(props: BlinkDepositProps) {
         ) : (
           <>
             <button
-              className="canary-btn canary-btn--accent canary-btn--block canary-blink-confirm"
+              className="canary-btn canary-btn--blink canary-btn--block canary-blink-confirm"
               onClick={run}
               disabled={!plan || busy}
             >
@@ -219,22 +233,6 @@ function Step({
         {status === "done" ? "✓" : status === "active" ? <Spinner small /> : n}
       </span>
       <span className="canary-blink-steplabel">{label}</span>
-    </div>
-  );
-}
-
-// Blink brand lockup. Swap the glyph/wordmark for the official Blink asset from
-// the booth when available; kept on-theme (accent + lightning) until then.
-function BlinkBadge() {
-  return (
-    <div className="canary-blink-badge">
-      <span className="canary-blink-bolt" aria-hidden>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-          <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" />
-        </svg>
-      </span>
-      <span className="canary-blink-word">Blink</span>
-      <span className="canary-blink-sub">instant deposit</span>
     </div>
   );
 }
